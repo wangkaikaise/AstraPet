@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleDisplayName</key>
-    <string>Eva Desktop Pet</string>
+    <string>伊娃桌面宠物</string>
     <key>CFBundleExecutable</key>
     <string>EvaDesktopPet</string>
     <key>CFBundleIconFile</key>
@@ -13,13 +13,13 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>Eva Desktop Pet</string>
+    <string>伊娃桌面宠物</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.3</string>
+    <string>1.1.4</string>
     <key>CFBundleVersion</key>
-    <string>113</string>
+    <string>114</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>

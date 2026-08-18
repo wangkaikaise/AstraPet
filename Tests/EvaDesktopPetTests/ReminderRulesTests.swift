@@ -75,11 +75,32 @@ final class ReminderRulesTests: XCTestCase {
             PetMotionSpec.hoverHorizontalTravel,
             PetMotionSpec.idleHorizontalTravel * 5
         )
-        XCTAssertEqual(PetMotionSpec.dragFrameNanoseconds, 16_666_667)
     }
 
     func testMetricsPanelReservesHeadClearance() {
         XCTAssertGreaterThanOrEqual(PetLayoutSpec.panelExtraWidth, 300)
-        XCTAssertEqual(PetLayoutSpec.metricsTrailingPadding, 8)
+        XCTAssertGreaterThanOrEqual(PetLayoutSpec.panelExtraHeight, 220)
+        XCTAssertGreaterThanOrEqual(PetLayoutSpec.topMetricsPetOffset, 80)
+    }
+
+    @MainActor
+    func testMetricsPresentationPreferencesPersist() {
+        let suiteName = "EvaDesktopPetTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settings = PetSettings(defaults: defaults)
+        settings.metricsPosition = .left
+        settings.metricsContentOpacity = 0.65
+        settings.metricsBackgroundOpacity = 0
+
+        let restored = PetSettings(defaults: defaults)
+        XCTAssertEqual(restored.metricsPosition, .left)
+        XCTAssertEqual(restored.metricsContentOpacity, 0.65, accuracy: 0.001)
+        XCTAssertEqual(restored.metricsBackgroundOpacity, 0, accuracy: 0.001)
+    }
+
+    func testMetricsSupportsFourPlacements() {
+        XCTAssertEqual(MetricsPosition.allCases, [.top, .bottom, .left, .right])
     }
 }

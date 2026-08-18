@@ -21,7 +21,7 @@ final class ReminderManager: ObservableObject {
 
         for reminder in reminders where reminder.isEnabled {
             let content = UNMutableNotificationContent()
-            content.title = "Eva 提醒"
+            content.title = "伊娃提醒"
             content.body = reminder.title
             content.sound = .default
 

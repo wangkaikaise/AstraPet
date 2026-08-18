@@ -30,15 +30,15 @@ enum PetAction: String, CaseIterable, Codable, Identifiable {
 enum PetMotionSpec {
     static let chestCoreNormalizedX: CGFloat = 0
     static let chestCoreNormalizedY: CGFloat = 0.045
-    static let idleHorizontalTravel: CGFloat = 1.5
-    static let hoverHorizontalTravel: CGFloat = 14
-    static let dragFrameNanoseconds: UInt64 = 16_666_667
+    static let idleHorizontalTravel: CGFloat = 4
+    static let hoverHorizontalTravel: CGFloat = 32
 }
 
 enum PetLayoutSpec {
     static let panelExtraWidth: CGFloat = 300
-    static let panelExtraHeight: CGFloat = 140
-    static let metricsTrailingPadding: CGFloat = 8
+    static let panelExtraHeight: CGFloat = 220
+    static let metricsPadding: CGFloat = 10
+    static let topMetricsPetOffset: CGFloat = 88
 }
 
 enum GlowTheme: String, CaseIterable, Codable, Identifiable {
@@ -122,6 +122,38 @@ enum MetricsRefreshInterval: Int, CaseIterable, Codable, Identifiable {
 
     var id: Int { rawValue }
     var title: String { "\(rawValue) 秒" }
+}
+
+enum MetricsPosition: String, CaseIterable, Identifiable {
+    case top, bottom, left, right
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .top: "上方"
+        case .bottom: "下方"
+        case .left: "左侧"
+        case .right: "右侧"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .top: "arrow.up"
+        case .bottom: "arrow.down"
+        case .left: "arrow.left"
+        case .right: "arrow.right"
+        }
+    }
+
+    var alignment: Alignment {
+        switch self {
+        case .top: .top
+        case .bottom: .bottom
+        case .left: .topLeading
+        case .right: .topTrailing
+        }
+    }
 }
 
 enum MetricTextColor: String, CaseIterable, Identifiable {

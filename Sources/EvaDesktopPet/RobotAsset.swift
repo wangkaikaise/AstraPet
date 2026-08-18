@@ -31,6 +31,6 @@ enum RobotAsset {
             return image
         }
 
-        return NSImage(systemSymbolName: "sparkles", accessibilityDescription: "Eva") ?? NSImage()
+        return NSImage(systemSymbolName: "sparkles", accessibilityDescription: "伊娃") ?? NSImage()
     }
 }

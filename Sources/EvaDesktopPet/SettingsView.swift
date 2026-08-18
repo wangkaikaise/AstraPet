@@ -91,6 +91,13 @@ struct SettingsView: View {
             Form {
                 Section("桌面性能卡片") {
                     Toggle("在宠物旁显示性能信息", isOn: $settings.showSystemMonitor)
+                    Picker("显示位置", selection: $settings.metricsPosition) {
+                        ForEach(MetricsPosition.allCases) { position in
+                            Label(position.title, systemImage: position.symbol).tag(position)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .disabled(!settings.showSystemMonitor)
                     Picker("刷新频率", selection: $settings.metricsRefreshInterval) {
                         ForEach(MetricsRefreshInterval.allCases) { interval in
                             Text(interval.title).tag(interval)
@@ -108,6 +115,9 @@ struct SettingsView: View {
                 .disabled(!settings.showSystemMonitor)
 
                 Section("玻璃卡片样式") {
+                    Slider(value: $settings.metricsContentOpacity, in: 0.25...1, step: 0.05) {
+                        Text("整体透明度")
+                    } minimumValueLabel: { Text("淡") } maximumValueLabel: { Text("清晰") }
                     Slider(value: $settings.metricsBackgroundOpacity, in: 0...0.75, step: 0.05) {
                         Text("背景深度")
                     } minimumValueLabel: { Text("全透明") } maximumValueLabel: { Text("清晰") }
@@ -167,7 +177,7 @@ struct SettingsView: View {
                 }
 
                 if reminders.authorizationDenied {
-                    Label("通知权限未开启，请在系统设置中允许 Eva Desktop Pet 通知。", systemImage: "exclamationmark.triangle")
+                    Label("通知权限未开启，请在系统设置中允许伊娃桌面宠物发送通知。", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
                 }
 
