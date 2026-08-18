@@ -8,35 +8,53 @@ struct PetView: View {
     @State private var tapCount = 0
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let normalizedTime = timeline.date.timeIntervalSinceReferenceDate
-                .truncatingRemainder(dividingBy: 120)
-            let phase = normalizedTime * settings.animationSpeed
+        TimelineView(.animation(minimumInterval: 1.0 / 12.0)) { timeline in
+            let time = timeline.date.timeIntervalSinceReferenceDate
+                .truncatingRemainder(dividingBy: 240)
+            let phase = time * settings.animationSpeed
+
             ZStack(alignment: .top) {
-                ActionEffects(action: runtime.action, phase: phase, color: settings.theme.color)
-                    .frame(width: settings.size + 110, height: settings.size + 110)
+                if settings.shieldEnabled {
+                    ShieldView(style: settings.shieldStyle, phase: phase, color: settings.theme.color)
+                        .frame(width: settings.size + 58, height: settings.size + 58)
+                        .offset(y: 26)
+                        .transition(.opacity)
+                }
+
+                CompanionBase(phase: phase, brightness: settings.baseBrightness, color: settings.theme.color)
+                    .frame(width: settings.size * 0.66, height: 52)
+                    .offset(y: settings.size + 48)
+
                 robot(phase: phase)
+
                 if let message {
                     Text(message)
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, 13)
                         .padding(.vertical, 8)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .overlay(Capsule().stroke(settings.theme.color.opacity(0.55)))
-                        .shadow(color: settings.theme.color.opacity(0.25), radius: 8)
+                        .background(Color(red: 0.25, green: 0.16, blue: 0.12).opacity(0.88), in: Capsule())
+                        .foregroundStyle(Color(red: 1, green: 0.91, blue: 0.72))
+                        .overlay(Capsule().stroke(settings.theme.color.opacity(0.5)))
                         .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .offset(y: 2)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .frame(width: settings.size + 110, height: settings.size + 110)
+        .frame(width: settings.size + 140, height: settings.size + 140)
         .contentShape(Rectangle())
         .task { await blinkLoop() }
+        .task(id: "\(settings.autoMood)-\(settings.moodInterval.rawValue)") { await moodLoop() }
         .onChange(of: runtime.action) { newAction in
             isBlinking = false
-            show(newAction == .sleep ? "嘘…进入低功耗模式" : "\(newAction.title)模式启动")
+            show(newAction == .sleep ? "晚安，我会安静陪着你" : "慢慢进入\(newAction.title)状态")
         }
+        .onChange(of: settings.mood) { newMood in
+            show("现在是：\(newMood.title)")
+        }
+        .animation(.easeInOut(duration: 1.2), value: settings.shieldEnabled)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("桌面宠物 Astra，当前动作：\(runtime.action.title)")
+        .accessibilityLabel("桌面伙伴 Astra，当前动作：\(runtime.action.title)，情绪：\(settings.mood.title)")
         .accessibilityAddTraits(.isButton)
     }
 
@@ -47,12 +65,11 @@ struct PetView: View {
             .scaledToFit()
             .frame(width: settings.size, height: settings.size)
             .id(spriteName)
-            .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            .transition(.opacity.combined(with: .scale(scale: 0.985)))
             .opacity(settings.opacity)
             .scaleEffect(motion.scale)
             .rotationEffect(.degrees(motion.rotation))
-            .offset(x: motion.x, y: motion.y + 38)
-            .saturation(runtime.action == .sleep ? 0.55 : 1)
+            .offset(x: motion.x, y: motion.y + 34)
             .onTapGesture { interact() }
             .contextMenu {
                 ForEach(PetAction.allCases) { item in
@@ -62,67 +79,99 @@ struct PetView: View {
                 }
             }
             .help("点击和 Astra 互动；拖动可移动位置")
-            .animation(.easeInOut(duration: 0.22), value: spriteName)
+            .animation(.easeInOut(duration: 1.15), value: spriteName)
     }
 
     private var spriteName: String {
-        switch runtime.action {
-        case .idle: isBlinking ? "robot-blink" : "robot"
-        case .hover: "robot"
-        case .cheer: "robot-cheer"
-        case .sleep: "robot-sleep"
-        }
+        if runtime.action == .sleep { return "robot-warm-sleep" }
+        if runtime.action == .cheer { return "robot-warm-happy" }
+        if settings.mood.usesGloomyExpression { return "robot-warm-gloomy" }
+        if isBlinking { return "robot-warm-blink" }
+        return "robot-warm"
     }
 
     private func motionValues(for action: PetAction, phase: Double) -> MotionValues {
         switch action {
         case .idle:
-            return MotionValues(x: sin(phase * 0.65) * 2.5, y: sin(phase * 1.25) * 7,
-                rotation: sin(phase * 0.7) * 2.2, scale: 1 + sin(phase * 1.1) * 0.018,
-                glow: 0.42 + sin(phase * 1.5) * 0.12, glowRadius: 15 + sin(phase * 1.5) * 5)
+            return MotionValues(
+                x: sin(phase * 0.30) * 1.8,
+                y: sin(phase * 0.52) * 4.5,
+                rotation: sin(phase * 0.24) * 1.3,
+                scale: 1 + sin(phase * 0.42) * 0.010
+            )
         case .hover:
-            return MotionValues(x: cos(phase * 1.2) * 9, y: sin(phase * 2.1) * 15,
-                rotation: sin(phase * 1.2) * 5, scale: 1.03 + sin(phase * 2.1) * 0.025,
-                glow: 0.72, glowRadius: 25)
+            return MotionValues(
+                x: cos(phase * 0.46) * 5,
+                y: sin(phase * 0.72) * 8,
+                rotation: sin(phase * 0.40) * 2.5,
+                scale: 1.01 + sin(phase * 0.62) * 0.014
+            )
         case .cheer:
-            return MotionValues(x: sin(phase * 4.5) * 7, y: -abs(sin(phase * 3.1)) * 20,
-                rotation: sin(phase * 4.5) * 7, scale: 1.04 + abs(sin(phase * 3.1)) * 0.07,
-                glow: 0.82, glowRadius: 28)
+            return MotionValues(
+                x: sin(phase * 0.72) * 3,
+                y: -5 + sin(phase * 0.64) * 5,
+                rotation: sin(phase * 0.58) * 2.8,
+                scale: 1.025 + sin(phase * 0.54) * 0.016
+            )
         case .sleep:
-            return MotionValues(x: 0, y: 8 + sin(phase * 0.7) * 3,
-                rotation: -3 + sin(phase * 0.55) * 1.2, scale: 0.96 + sin(phase * 0.7) * 0.01,
-                glow: 0.24, glowRadius: 10)
+            return MotionValues(
+                x: 0,
+                y: 5 + sin(phase * 0.23) * 2,
+                rotation: -1.5 + sin(phase * 0.18) * 0.7,
+                scale: 0.98 + sin(phase * 0.24) * 0.006
+            )
         }
     }
 
     @MainActor
     private func blinkLoop() async {
         while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 2_700_000_000)
-            guard runtime.action == .idle else { continue }
-            withAnimation(.easeInOut(duration: 0.06)) { isBlinking = true }
-            try? await Task.sleep(nanoseconds: 150_000_000)
-            withAnimation(.easeInOut(duration: 0.06)) { isBlinking = false }
+            try? await Task.sleep(nanoseconds: 5_400_000_000)
+            guard runtime.action == .idle, !settings.mood.usesGloomyExpression else { continue }
+            withAnimation(.easeInOut(duration: 0.14)) { isBlinking = true }
+            try? await Task.sleep(nanoseconds: 260_000_000)
+            withAnimation(.easeInOut(duration: 0.16)) { isBlinking = false }
+        }
+    }
+
+    @MainActor
+    private func moodLoop() async {
+        while settings.autoMood && !Task.isCancelled {
+            let seconds = UInt64(settings.moodInterval.rawValue)
+            try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
+            guard settings.autoMood, !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 1.25)) { settings.advanceMood() }
         }
     }
 
     private func interact() {
         tapCount += 1
         runtime.action = .cheer
-        let messages = ["收到！", "今天也一起加油。", "信号连接成功！", "嘿，我一直在。"]
+        let messages = messagesForCurrentMood
         show(messages[tapCount % messages.count])
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_100_000_000)
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
             if runtime.action == .cheer { runtime.action = .idle }
         }
     }
 
+    private var messagesForCurrentMood: [String] {
+        switch settings.mood {
+        case .cheerful: ["今天也很棒呀", "你的好心情，我收到啦"]
+        case .calm: ["慢一点也没关系", "陪你安静待一会儿"]
+        case .tired: ["累了就伸个懒腰吧", "先喝口水，再继续"]
+        case .frustrated: ["工作可以烦，别为难自己", "深呼吸，我陪着你"]
+        case .blue: ["今天不开心也没关系", "不用马上振作，我在这里"]
+        case .focused: ["专注模式，一起加油", "一步一步来就好"]
+        }
+    }
+
     private func show(_ text: String) {
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) { message = text }
+        withAnimation(.easeInOut(duration: 0.65)) { message = text }
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_300_000_000)
+            try? await Task.sleep(nanoseconds: 5_500_000_000)
             if message == text {
-                withAnimation(.easeOut(duration: 0.2)) { message = nil }
+                withAnimation(.easeOut(duration: 0.55)) { message = nil }
             }
         }
     }
@@ -133,84 +182,74 @@ private struct MotionValues {
     let y: CGFloat
     let rotation: Double
     let scale: CGFloat
-    let glow: Double
-    let glowRadius: CGFloat
 }
 
-private struct ActionEffects: View {
-    let action: PetAction
+private struct CompanionBase: View {
     let phase: Double
+    let brightness: Double
     let color: Color
 
     var body: some View {
         ZStack {
-            energyRings
-            switch action {
-            case .idle: idleOrbit
-            case .hover: scanner
-            case .cheer: celebration
-            case .sleep: sleepSymbols
-            }
+            Ellipse()
+                .fill(Color(red: 0.20, green: 0.13, blue: 0.10).opacity(0.82))
+                .frame(height: 32)
+            Ellipse()
+                .stroke(Color(red: 0.78, green: 0.60, blue: 0.42).opacity(0.9), lineWidth: 2)
+                .frame(height: 30)
+            Ellipse()
+                .fill(
+                    RadialGradient(
+                        colors: [color.opacity(brightness), color.opacity(brightness * 0.12), .clear],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 58
+                    )
+                )
+                .frame(width: 116, height: 24)
+                .scaleEffect(0.98 + sin(phase * 0.38) * 0.025)
+            Capsule()
+                .fill(Color(red: 0.96, green: 0.83, blue: 0.65).opacity(0.82))
+                .frame(width: 54, height: 5)
         }
+        .opacity(0.45 + brightness * 0.55)
         .allowsHitTesting(false)
     }
+}
 
-    private var energyRings: some View {
-        ZStack {
-            ForEach(0..<3, id: \.self) { index in
-                let wave = (phase * 0.7 + Double(index) * 0.33).truncatingRemainder(dividingBy: 1)
-                Ellipse()
-                    .stroke(color.opacity((1 - wave) * (action == .sleep ? 0.16 : 0.42)), lineWidth: 1.5)
-                    .frame(width: 44 + wave * 75, height: 14 + wave * 22)
-                    .offset(y: 88)
+private struct ShieldView: View {
+    let style: ShieldStyle
+    let phase: Double
+    let color: Color
+
+    var body: some View {
+        switch style {
+        case .halo:
+            Circle()
+                .stroke(color.opacity(0.18), lineWidth: 10)
+                .overlay(Circle().stroke(color.opacity(0.28), lineWidth: 1.5))
+                .scaleEffect(0.965 + sin(phase * 0.20) * 0.012)
+        case .bubble:
+            Circle()
+                .fill(color.opacity(0.035))
+                .overlay(
+                    Circle().stroke(
+                        LinearGradient(colors: [color.opacity(0.40), .white.opacity(0.12), color.opacity(0.16)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        lineWidth: 1.5
+                    )
+                )
+                .scaleEffect(0.97 + sin(phase * 0.16) * 0.010)
+        case .orbit:
+            ZStack {
+                Circle()
+                    .trim(from: 0.08, to: 0.44)
+                    .stroke(color.opacity(0.34), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .rotationEffect(.degrees(phase * 3.5))
+                Circle()
+                    .trim(from: 0.56, to: 0.84)
+                    .stroke(color.opacity(0.20), style: StrokeStyle(lineWidth: 1, lineCap: .round))
+                    .rotationEffect(.degrees(-phase * 2.3))
             }
-        }
-    }
-
-    private var idleOrbit: some View {
-        Circle()
-            .trim(from: 0.05, to: 0.28)
-            .stroke(color.opacity(0.38), style: StrokeStyle(lineWidth: 1.4, lineCap: .round))
-            .frame(width: 210, height: 210)
-            .rotationEffect(.degrees(phase * 28))
-    }
-
-    private var scanner: some View {
-        ZStack {
-            Circle()
-                .trim(from: 0, to: 0.34)
-                .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                .frame(width: 228, height: 228)
-                .rotationEffect(.degrees(phase * 80))
-            Circle()
-                .stroke(color.opacity(0.16), lineWidth: 1)
-                .frame(width: 245, height: 245)
-                .scaleEffect(0.96 + sin(phase * 2) * 0.04)
-        }
-    }
-
-    private var celebration: some View {
-        ForEach(0..<8, id: \.self) { index in
-            let angle = Double(index) * .pi / 4 + phase * 0.35
-            Image(systemName: index.isMultiple(of: 2) ? "sparkle" : "star.fill")
-                .font(.system(size: index.isMultiple(of: 2) ? 14 : 9, weight: .bold))
-                .foregroundStyle(color)
-                .shadow(color: color, radius: 5)
-                .offset(x: cos(angle) * 132, y: sin(angle) * 105)
-                .scaleEffect(0.75 + abs(sin(phase * 3 + Double(index))) * 0.65)
-                .opacity(0.45 + abs(sin(phase * 2.4 + Double(index))) * 0.55)
-        }
-    }
-
-    private var sleepSymbols: some View {
-        ForEach(0..<3, id: \.self) { index in
-            let drift = (phase * 0.22 + Double(index) * 0.34).truncatingRemainder(dividingBy: 1)
-            Text("Z")
-                .font(.system(size: 12 + CGFloat(index) * 3, weight: .bold, design: .rounded))
-                .foregroundStyle(color)
-                .shadow(color: color.opacity(0.7), radius: 4)
-                .offset(x: 78 + drift * 28, y: 24 - drift * 100)
-                .opacity(1 - drift)
         }
     }
 }

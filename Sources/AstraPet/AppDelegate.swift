@@ -25,7 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func createPetPanel() {
-        let size = settings.size + 120
+        let size = settings.size + 140
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1000, height: 700)
         let origin = NSPoint(x: screen.maxX - size - 24, y: screen.minY + 42)
         let panel = NSPanel(
@@ -47,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         settings.$size.combineLatest(settings.$keepOnTop).sink { [weak self] size, keepOnTop in
             guard let panel = self?.petPanel else { return }
-            let length = size + 120
+            let length = size + 140
             panel.setContentSize(NSSize(width: length, height: length))
             panel.level = keepOnTop ? .floating : .normal
         }.store(in: &cancellables)
