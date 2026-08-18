@@ -38,6 +38,12 @@ enum PetMotionSpec {
     static let hoverHorizontalTravel: CGFloat = 32
 }
 
+enum PetInteractionSpec {
+    // Non-zero alpha prevents transparent NSPanel hit testing from passing
+    // pointer events through the visible rocket on macOS.
+    static let hitLayerOpacity = 0.001
+}
+
 enum PetLayoutSpec {
     static let panelExtraWidth: CGFloat = 300
     static let panelExtraHeight: CGFloat = 220

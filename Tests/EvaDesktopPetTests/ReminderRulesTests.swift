@@ -88,6 +88,19 @@ final class ReminderRulesTests: XCTestCase {
         XCTAssertEqual(DragDirection.down.unitVector.dy, 1)
     }
 
+    func testPetInteractionLayerRemainsHitTestable() {
+        XCTAssertGreaterThan(PetInteractionSpec.hitLayerOpacity, 0)
+        XCTAssertLessThanOrEqual(PetInteractionSpec.hitLayerOpacity, 0.001)
+    }
+
+    @MainActor
+    func testStatusBarAvatarUsesSystemTemplateTint() {
+        let image = StatusBarIcon.makeEvaAvatar()
+        XCTAssertTrue(image.isTemplate)
+        XCTAssertEqual(image.size, NSSize(width: 18, height: 18))
+        XCTAssertEqual(image.accessibilityDescription, "伊娃桌面宠物")
+    }
+
     func testMotionSystemKeepsCoreCenteredAndCruiseDistinct() {
         XCTAssertEqual(PetMotionSpec.chestCoreNormalizedX, 0)
         XCTAssertEqual(PetMotionSpec.chestCoreNormalizedY, 0.045, accuracy: 0.0001)

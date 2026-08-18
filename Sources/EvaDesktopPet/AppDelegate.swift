@@ -75,7 +75,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func createStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(systemSymbolName: "sparkles", accessibilityDescription: "伊娃桌面宠物")
+        item.button?.image = StatusBarIcon.makeEvaAvatar()
+        item.button?.imagePosition = .imageOnly
+        item.button?.toolTip = "伊娃桌面宠物"
         item.menu = buildMenu()
         statusItem = item
     }
@@ -129,4 +131,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func quit() { NSApp.terminate(nil) }
+}
+
+enum StatusBarIcon {
+    static let size = NSSize(width: 18, height: 18)
+
+    static func makeEvaAvatar() -> NSImage {
+        let image = NSImage(size: size, flipped: false) { rect in
+            NSGraphicsContext.saveGraphicsState()
+            defer { NSGraphicsContext.restoreGraphicsState() }
+
+            NSColor.black.setStroke()
+            NSColor.black.setFill()
+
+            // Eva's simple floating head shell.
+            let shell = NSBezierPath(roundedRect: NSRect(x: 1.7, y: 3.8, width: 14.6, height: 10.6), xRadius: 5.3, yRadius: 5.3)
+            shell.lineWidth = 1.45
+            shell.lineCapStyle = .round
+            shell.stroke()
+
+            // Dark face window, expressed as a clean template outline.
+            let face = NSBezierPath(roundedRect: NSRect(x: 3.7, y: 6.0, width: 10.6, height: 6.1), xRadius: 3.05, yRadius: 3.05)
+            face.lineWidth = 1.15
+            face.stroke()
+
+            // Eva's two characteristic blue eyes become the current system tint.
+            NSBezierPath(ovalIn: NSRect(x: 5.5, y: 8.1, width: 2.25, height: 1.35)).fill()
+            NSBezierPath(ovalIn: NSRect(x: 10.25, y: 8.1, width: 2.25, height: 1.35)).fill()
+
+            // A tiny floating-body cue keeps the mark readable as an avatar.
+            let body = NSBezierPath()
+            body.move(to: NSPoint(x: 6.0, y: 2.65))
+            body.curve(to: NSPoint(x: 12.0, y: 2.65), controlPoint1: NSPoint(x: 7.1, y: 1.55), controlPoint2: NSPoint(x: 10.9, y: 1.55))
+            body.lineWidth = 1.25
+            body.lineCapStyle = .round
+            body.stroke()
+
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "伊娃桌面宠物"
+        return image
+    }
 }

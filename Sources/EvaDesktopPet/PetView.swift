@@ -144,6 +144,13 @@ struct PetView: View {
             ? motionValues(for: .play, phase: phase)
             : (isDragging ? dragMotionValues(phase: phase) : motionValues(for: runtime.action, phase: phase))
         return ZStack {
+            // Keep a real (barely visible) hit-test surface behind every visual state.
+            // A fully transparent SwiftUI subtree can be ignored by AppKit, which made
+            // the rocket visible while mouse-down events passed through the panel.
+            Rectangle()
+                .fill(Color.black.opacity(PetInteractionSpec.hitLayerOpacity))
+                .contentShape(Rectangle())
+
             ZStack {
                 Image(nsImage: RobotAsset.image(named: spriteName))
                     .resizable()
