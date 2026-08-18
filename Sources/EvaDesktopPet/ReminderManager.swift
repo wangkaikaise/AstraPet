@@ -25,10 +25,18 @@ final class ReminderManager: ObservableObject {
             content.body = reminder.title
             content.sound = .default
 
-            var components = DateComponents()
-            components.hour = reminder.hour
-            components.minute = reminder.minute
-            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+            let trigger: UNNotificationTrigger
+            if reminder.schedule == .interval {
+                trigger = UNTimeIntervalNotificationTrigger(
+                    timeInterval: TimeInterval(max(15, reminder.intervalMinutes) * 60),
+                    repeats: true
+                )
+            } else {
+                var components = DateComponents()
+                components.hour = reminder.hour
+                components.minute = reminder.minute
+                trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+            }
             let request = UNNotificationRequest(
                 identifier: reminder.id.uuidString,
                 content: content,

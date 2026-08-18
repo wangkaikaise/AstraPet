@@ -5,7 +5,7 @@ import Foundation
 enum RobotAsset {
     private static let cache: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()
-        cache.countLimit = 3
+        cache.countLimit = 2
         return cache
     }()
 

@@ -22,6 +22,9 @@ final class PetSettings: ObservableObject {
         static let showGPUUsage = "monitor.gpuUsage"
         static let showGPUTemperature = "monitor.gpuTemperature"
         static let metricsRefreshInterval = "monitor.refreshInterval"
+        static let metricsBackgroundOpacity = "monitor.backgroundOpacity"
+        static let metricTextColor = "monitor.textColor"
+        static let metricFontStyle = "monitor.fontStyle"
     }
 
     @Published var size: Double { didSet { save(size, for: Key.size) } }
@@ -41,6 +44,9 @@ final class PetSettings: ObservableObject {
     @Published var showGPUUsage: Bool { didSet { save(showGPUUsage, for: Key.showGPUUsage) } }
     @Published var showGPUTemperature: Bool { didSet { save(showGPUTemperature, for: Key.showGPUTemperature) } }
     @Published var metricsRefreshInterval: MetricsRefreshInterval { didSet { save(metricsRefreshInterval.rawValue, for: Key.metricsRefreshInterval) } }
+    @Published var metricsBackgroundOpacity: Double { didSet { save(metricsBackgroundOpacity, for: Key.metricsBackgroundOpacity) } }
+    @Published var metricTextColor: MetricTextColor { didSet { save(metricTextColor.rawValue, for: Key.metricTextColor) } }
+    @Published var metricFontStyle: MetricFontStyle { didSet { save(metricFontStyle.rawValue, for: Key.metricFontStyle) } }
     @Published var reminders: [PetReminder] { didSet { saveReminders() } }
 
     private let defaults: UserDefaults
@@ -66,6 +72,9 @@ final class PetSettings: ObservableObject {
         showGPUTemperature = defaults.object(forKey: Key.showGPUTemperature) as? Bool ?? true
         let storedRefreshInterval = defaults.integer(forKey: Key.metricsRefreshInterval)
         metricsRefreshInterval = MetricsRefreshInterval(rawValue: storedRefreshInterval) ?? .fiveSeconds
+        metricsBackgroundOpacity = defaults.object(forKey: Key.metricsBackgroundOpacity) as? Double ?? 0.28
+        metricTextColor = MetricTextColor(rawValue: defaults.string(forKey: Key.metricTextColor) ?? "white") ?? .white
+        metricFontStyle = MetricFontStyle(rawValue: defaults.string(forKey: Key.metricFontStyle) ?? "rounded") ?? .rounded
         if let data = defaults.data(forKey: Key.reminders),
            let decoded = try? JSONDecoder().decode([PetReminder].self, from: data) {
             reminders = decoded

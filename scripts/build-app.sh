@@ -16,7 +16,7 @@ mkdir -p "$CONTENTS_DIR/MacOS" "$CONTENTS_DIR/Resources"
 cp "$BUILD_DIR/EvaDesktopPet" "$CONTENTS_DIR/MacOS/EvaDesktopPet"
 cp "$ROOT_DIR/support/Info.plist" "$CONTENTS_DIR/Info.plist"
 cp "$ROOT_DIR/support/EvaDesktopPet.icns" "$CONTENTS_DIR/Resources/EvaDesktopPet.icns"
-for resource in eva-original.png eva-original-blink.png eva-original-happy.png eva-original-gloomy.png eva-original-sleep.png; do
+for resource in eva-glass-v11.png eva-glass-v11-blink.png eva-glass-v11-happy.png eva-glass-v11-gloomy.png eva-glass-v11-sleep.png; do
   cp "$ROOT_DIR/Sources/EvaDesktopPet/Resources/$resource" "$CONTENTS_DIR/Resources/$resource"
 done
 

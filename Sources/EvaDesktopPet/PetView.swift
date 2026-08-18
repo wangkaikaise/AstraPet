@@ -9,7 +9,7 @@ struct PetView: View {
     @State private var tapCount = 0
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 12.0)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
                 .truncatingRemainder(dividingBy: 240)
             let phase = time * settings.animationSpeed
@@ -22,9 +22,9 @@ struct PetView: View {
                         .transition(.opacity)
                 }
 
-                CompanionBase(phase: phase, brightness: settings.baseBrightness, color: settings.theme.color)
-                    .frame(width: settings.size * 0.66, height: 52)
-                    .offset(y: settings.size + 48)
+                GlassLightPool(phase: phase, brightness: settings.baseBrightness, color: settings.theme.color)
+                    .frame(width: settings.size * 0.72, height: 46)
+                    .offset(y: settings.size + 42)
 
                 robot(phase: phase)
 
@@ -33,9 +33,11 @@ struct PetView: View {
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 13)
                         .padding(.vertical, 8)
-                        .background(Color(red: 0.25, green: 0.16, blue: 0.12).opacity(0.88), in: Capsule())
-                        .foregroundStyle(Color(red: 1, green: 0.91, blue: 0.72))
-                        .overlay(Capsule().stroke(settings.theme.color.opacity(0.5)))
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .background(Color.black.opacity(0.20), in: Capsule())
+                        .foregroundStyle(.white)
+                        .overlay(Capsule().stroke(.white.opacity(0.38)))
+                        .shadow(color: settings.theme.color.opacity(0.25), radius: 12)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                         .offset(y: settings.showSystemMonitor ? settings.size + 8 : 2)
                 }
@@ -68,7 +70,7 @@ struct PetView: View {
         .onChange(of: settings.mood) { newMood in
             show("现在是：\(newMood.title)")
         }
-        .animation(.easeInOut(duration: 1.2), value: settings.shieldEnabled)
+        .animation(.easeInOut(duration: 2.0), value: settings.shieldEnabled)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("桌面伙伴 Eva，当前动作：\(runtime.action.title)，情绪：\(settings.mood.title)")
         .accessibilityAddTraits(.isButton)
@@ -95,46 +97,46 @@ struct PetView: View {
                 }
             }
             .help("点击和 Eva 互动；拖动可移动位置")
-            .animation(.easeInOut(duration: 1.15), value: spriteName)
+            .animation(.easeInOut(duration: 2.2), value: spriteName)
     }
 
     private var spriteName: String {
-        if runtime.action == .sleep { return "eva-original-sleep" }
-        if runtime.action == .cheer { return "eva-original-happy" }
-        if settings.mood.usesGloomyExpression { return "eva-original-gloomy" }
-        if isBlinking { return "eva-original-blink" }
-        return "eva-original"
+        if runtime.action == .sleep { return "eva-glass-v11-sleep" }
+        if runtime.action == .cheer { return "eva-glass-v11-happy" }
+        if settings.mood.usesGloomyExpression { return "eva-glass-v11-gloomy" }
+        if isBlinking { return "eva-glass-v11-blink" }
+        return "eva-glass-v11"
     }
 
     private func motionValues(for action: PetAction, phase: Double) -> MotionValues {
         switch action {
         case .idle:
             return MotionValues(
-                x: sin(phase * 0.30) * 1.8,
-                y: sin(phase * 0.52) * 4.5,
-                rotation: sin(phase * 0.24) * 1.3,
-                scale: 1 + sin(phase * 0.42) * 0.010
+                x: sin(phase * 0.13) * 1.5,
+                y: sin(phase * 0.20) * 4.2,
+                rotation: sin(phase * 0.11) * 1.1,
+                scale: 1 + sin(phase * 0.16) * 0.009
             )
         case .hover:
             return MotionValues(
-                x: cos(phase * 0.46) * 5,
-                y: sin(phase * 0.72) * 8,
-                rotation: sin(phase * 0.40) * 2.5,
-                scale: 1.01 + sin(phase * 0.62) * 0.014
+                x: cos(phase * 0.18) * 4.5,
+                y: sin(phase * 0.27) * 7,
+                rotation: sin(phase * 0.16) * 2.1,
+                scale: 1.01 + sin(phase * 0.23) * 0.012
             )
         case .cheer:
             return MotionValues(
-                x: sin(phase * 0.72) * 3,
-                y: -5 + sin(phase * 0.64) * 5,
-                rotation: sin(phase * 0.58) * 2.8,
-                scale: 1.025 + sin(phase * 0.54) * 0.016
+                x: sin(phase * 0.25) * 2.8,
+                y: -5 + sin(phase * 0.23) * 5,
+                rotation: sin(phase * 0.21) * 2.5,
+                scale: 1.025 + sin(phase * 0.20) * 0.014
             )
         case .sleep:
             return MotionValues(
                 x: 0,
-                y: 5 + sin(phase * 0.23) * 2,
-                rotation: -1.5 + sin(phase * 0.18) * 0.7,
-                scale: 0.98 + sin(phase * 0.24) * 0.006
+                y: 5 + sin(phase * 0.10) * 2,
+                rotation: -1.5 + sin(phase * 0.08) * 0.6,
+                scale: 0.98 + sin(phase * 0.09) * 0.006
             )
         }
     }
@@ -142,7 +144,7 @@ struct PetView: View {
     @MainActor
     private func blinkLoop() async {
         while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 5_400_000_000)
+            try? await Task.sleep(nanoseconds: 7_800_000_000)
             guard runtime.action == .idle, !settings.mood.usesGloomyExpression else { continue }
             withAnimation(.easeInOut(duration: 0.14)) { isBlinking = true }
             try? await Task.sleep(nanoseconds: 260_000_000)
@@ -166,7 +168,7 @@ struct PetView: View {
         let messages = messagesForCurrentMood
         show(messages[tapCount % messages.count])
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 15_000_000_000)
+            try? await Task.sleep(nanoseconds: 30_000_000_000)
             if runtime.action == .cheer { runtime.action = .idle }
         }
     }
@@ -185,7 +187,7 @@ struct PetView: View {
     private func show(_ text: String) {
         withAnimation(.easeInOut(duration: 0.65)) { message = text }
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 5_500_000_000)
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
             if message == text {
                 withAnimation(.easeOut(duration: 0.55)) { message = nil }
             }
@@ -209,13 +211,18 @@ private struct MetricsHUD: View {
                 metric("GPU 温度", value: temperature(snapshot.gpuTemperature, fallback: "系统限制"), symbol: "thermometer.medium")
             }
         }
-        .font(.system(size: 10, weight: .semibold, design: .rounded))
+        .font(.system(size: 10, weight: .semibold, design: settings.metricFontStyle.design))
         .monospacedDigit()
         .padding(.horizontal, 9)
         .padding(.vertical, 8)
-        .background(Color(red: 0.03, green: 0.10, blue: 0.18).opacity(0.86), in: RoundedRectangle(cornerRadius: 11))
-        .overlay(RoundedRectangle(cornerRadius: 11).stroke(Color.cyan.opacity(0.32)))
-        .foregroundStyle(.white.opacity(0.92))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .background(Color.black.opacity(settings.metricsBackgroundOpacity), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .stroke(LinearGradient(colors: [.white.opacity(0.58), settings.theme.color.opacity(0.30)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        )
+        .shadow(color: settings.theme.color.opacity(0.08), radius: 4, y: 2)
+        .foregroundStyle(settings.metricTextColor.color.opacity(0.94))
         .allowsHitTesting(false)
     }
 
@@ -224,7 +231,7 @@ private struct MetricsHUD: View {
             Image(systemName: symbol).frame(width: 11)
             Text(label)
             Spacer(minLength: 5)
-            Text(value).foregroundStyle(.cyan)
+            Text(value).fontWeight(.bold)
         }
         .frame(width: 112)
     }
@@ -245,7 +252,7 @@ private struct MotionValues {
     let scale: CGFloat
 }
 
-private struct CompanionBase: View {
+private struct GlassLightPool: View {
     let phase: Double
     let brightness: Double
     let color: Color
@@ -253,27 +260,28 @@ private struct CompanionBase: View {
     var body: some View {
         ZStack {
             Ellipse()
-                .fill(Color(red: 0.20, green: 0.13, blue: 0.10).opacity(0.82))
-                .frame(height: 32)
-            Ellipse()
-                .stroke(Color(red: 0.78, green: 0.60, blue: 0.42).opacity(0.9), lineWidth: 2)
-                .frame(height: 30)
-            Ellipse()
                 .fill(
                     RadialGradient(
-                        colors: [color.opacity(brightness), color.opacity(brightness * 0.12), .clear],
+                        colors: [.white.opacity(brightness * 0.55), color.opacity(brightness * 0.48), color.opacity(brightness * 0.08), .clear],
                         center: .center,
                         startRadius: 0,
-                        endRadius: 58
+                        endRadius: 70
                     )
                 )
-                .frame(width: 116, height: 24)
-                .scaleEffect(0.98 + sin(phase * 0.38) * 0.025)
-            Capsule()
-                .fill(Color(red: 0.96, green: 0.83, blue: 0.65).opacity(0.82))
-                .frame(width: 54, height: 5)
+                .blur(radius: 8)
+                .scaleEffect(0.98 + sin(phase * 0.15) * 0.020)
+            Ellipse()
+                .fill(
+                    LinearGradient(
+                        colors: [.clear, .white.opacity(brightness * 0.20), color.opacity(brightness * 0.22), .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 5)
+                .blur(radius: 3)
         }
-        .opacity(0.45 + brightness * 0.55)
+        .opacity(0.18 + brightness * 0.42)
         .allowsHitTesting(false)
     }
 }
@@ -287,18 +295,23 @@ private struct ShieldView: View {
         switch style {
         case .halo:
             Circle()
-                .stroke(color.opacity(0.18), lineWidth: 10)
-                .overlay(Circle().stroke(color.opacity(0.28), lineWidth: 1.5))
+                .stroke(color.opacity(0.13), lineWidth: 10)
+                .overlay(Circle().stroke(.white.opacity(0.28), lineWidth: 1.2))
                 .scaleEffect(0.965 + sin(phase * 0.20) * 0.012)
         case .bubble:
             Circle()
-                .fill(color.opacity(0.035))
-                .overlay(
-                    Circle().stroke(
-                        LinearGradient(colors: [color.opacity(0.40), .white.opacity(0.12), color.opacity(0.16)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                        lineWidth: 1.5
-                    )
+                .stroke(
+                    LinearGradient(colors: [.white.opacity(0.52), color.opacity(0.35), .white.opacity(0.10)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    lineWidth: 1.5
                 )
+                .overlay(alignment: .topLeading) {
+                    Capsule()
+                        .fill(.white.opacity(0.18))
+                        .frame(width: 32, height: 2)
+                        .rotationEffect(.degrees(-35))
+                        .offset(x: 38, y: 52)
+                        .blur(radius: 1)
+                }
                 .scaleEffect(0.97 + sin(phase * 0.16) * 0.010)
         case .orbit:
             ZStack {
