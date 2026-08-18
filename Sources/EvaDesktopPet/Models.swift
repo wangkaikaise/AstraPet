@@ -35,6 +35,12 @@ enum PetMotionSpec {
     static let dragFrameNanoseconds: UInt64 = 16_666_667
 }
 
+enum PetLayoutSpec {
+    static let panelExtraWidth: CGFloat = 300
+    static let panelExtraHeight: CGFloat = 140
+    static let metricsTrailingPadding: CGFloat = 8
+}
+
 enum GlowTheme: String, CaseIterable, Codable, Identifiable {
     case cyan
 

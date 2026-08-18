@@ -77,4 +77,9 @@ final class ReminderRulesTests: XCTestCase {
         )
         XCTAssertEqual(PetMotionSpec.dragFrameNanoseconds, 16_666_667)
     }
+
+    func testMetricsPanelReservesHeadClearance() {
+        XCTAssertGreaterThanOrEqual(PetLayoutSpec.panelExtraWidth, 300)
+        XCTAssertEqual(PetLayoutSpec.metricsTrailingPadding, 8)
+    }
 }

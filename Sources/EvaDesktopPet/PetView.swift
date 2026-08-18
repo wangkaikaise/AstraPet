@@ -81,12 +81,15 @@ struct PetView: View {
                 if settings.showSystemMonitor {
                     MetricsHUD(snapshot: systemMetrics.snapshot)
                         .padding(.top, 8)
-                        .padding(.trailing, 4)
+                        .padding(.trailing, PetLayoutSpec.metricsTrailingPadding)
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 }
             }
         }
-        .frame(width: settings.size + 140, height: settings.size + 140)
+        .frame(
+            width: settings.size + PetLayoutSpec.panelExtraWidth,
+            height: settings.size + PetLayoutSpec.panelExtraHeight
+        )
         .background(WindowReader { hostWindow = $0 })
         .contentShape(Rectangle())
         .task(id: "\(settings.autoMood)-\(settings.moodInterval.rawValue)") { await moodLoop() }
@@ -128,6 +131,11 @@ struct PetView: View {
                         .offset(x: settings.size * 0.060, y: settings.size * 0.045)
                         .blur(radius: 1.5)
                 )
+
+            ActionEyes(action: isDragging ? .hover : runtime.action, color: actionAccent)
+                .frame(width: settings.size * 0.42, height: settings.size * 0.12)
+                .offset(x: settings.size * 0.035, y: -settings.size * 0.238)
+                .animation(.easeInOut(duration: 1.35), value: runtime.action)
 
             Circle()
                 .fill(
@@ -399,6 +407,123 @@ private struct MetricsHUD: View {
 
     private func temperature(_ value: Double?, fallback: String) -> String {
         value.map { String(format: "%.0f°C", $0) } ?? fallback
+    }
+}
+
+private struct ActionEyes: View {
+    let action: PetAction
+    let color: Color
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Color.black, Color(red: 0.015, green: 0.025, blue: 0.035), Color.black],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+
+            expression
+                .padding(.horizontal, 10)
+                .padding(.vertical, 2)
+        }
+    }
+
+    @ViewBuilder
+    private var expression: some View {
+        switch action {
+        case .idle:
+            ArcEyes(lift: 0.22, color: color, opacity: 0.90, lineWidth: 3.0)
+        case .hover:
+            FocusedEyes(color: color)
+        case .cheer:
+            ArcEyes(lift: 0.38, color: color, opacity: 0.94, lineWidth: 3.3)
+        case .play:
+            RoundPlayEyes(color: color)
+        case .sleep:
+            ArcEyes(lift: -0.08, color: color, opacity: 0.62, lineWidth: 2.2)
+        }
+    }
+}
+
+private struct ArcEyes: View {
+    let lift: CGFloat
+    let color: Color
+    let opacity: Double
+    let lineWidth: CGFloat
+
+    var body: some View {
+        EyeArcPair(lift: lift)
+            .stroke(color.opacity(opacity), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+            .shadow(color: color.opacity(0.52), radius: 4)
+    }
+}
+
+private struct EyeArcPair: Shape {
+    let lift: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let baseline = rect.height * 0.64
+        let eyeWidth = rect.width * 0.27
+        let halfWidth = eyeWidth / 2
+        let centers = [rect.width * 0.28, rect.width * 0.72]
+        for centerX in centers {
+            path.move(to: CGPoint(x: centerX - halfWidth, y: baseline))
+            path.addQuadCurve(
+                to: CGPoint(x: centerX + halfWidth, y: baseline),
+                control: CGPoint(x: centerX, y: baseline - rect.height * lift)
+            )
+        }
+        return path
+    }
+}
+
+private struct FocusedEyes: View {
+    let color: Color
+
+    var body: some View {
+        FocusedEyePair()
+            .stroke(color.opacity(0.88), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+            .shadow(color: color.opacity(0.50), radius: 4)
+    }
+}
+
+private struct FocusedEyePair: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.width * 0.14, y: rect.height * 0.52))
+        path.addLine(to: CGPoint(x: rect.width * 0.42, y: rect.height * 0.43))
+        path.move(to: CGPoint(x: rect.width * 0.58, y: rect.height * 0.43))
+        path.addLine(to: CGPoint(x: rect.width * 0.86, y: rect.height * 0.52))
+        return path
+    }
+}
+
+private struct RoundPlayEyes: View {
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 18) {
+            eye
+            eye
+        }
+    }
+
+    private var eye: some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    colors: [.white.opacity(0.95), color.opacity(0.80), color.opacity(0.35)],
+                    center: .topLeading,
+                    startRadius: 0,
+                    endRadius: 11
+                )
+            )
+            .frame(width: 15, height: 19)
+            .shadow(color: color.opacity(0.48), radius: 5)
     }
 }
 
