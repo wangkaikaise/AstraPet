@@ -63,3 +63,8 @@ enum ReminderRules {
         (0...23).contains(hour) && (0...59).contains(minute)
     }
 }
+
+@MainActor
+final class PetRuntime: ObservableObject {
+    @Published var action: PetAction = .idle
+}

@@ -6,7 +6,7 @@ import Combine
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let settings = PetSettings()
     let reminderManager = ReminderManager()
-    var action: PetAction = .idle { didSet { rebuildPetContent() } }
+    let runtime = PetRuntime()
 
     private var petPanel: NSPanel?
     private var settingsWindow: NSWindow?
@@ -25,7 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func createPetPanel() {
-        let size = settings.size + 70
+        let size = settings.size + 120
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1000, height: 700)
         let origin = NSPoint(x: screen.maxX - size - 24, y: screen.minY + 42)
         let panel = NSPanel(
@@ -47,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         settings.$size.combineLatest(settings.$keepOnTop).sink { [weak self] size, keepOnTop in
             guard let panel = self?.petPanel else { return }
-            let length = size + 70
+            let length = size + 120
             panel.setContentSize(NSSize(width: length, height: length))
             panel.level = keepOnTop ? .floating : .normal
         }.store(in: &cancellables)
@@ -56,12 +56,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var cancellables = Set<AnyCancellable>()
 
     private func petHostingView() -> NSView {
-        let binding = Binding<PetAction>(get: { [weak self] in self?.action ?? .idle }, set: { [weak self] in self?.action = $0 })
-        return NSHostingView(rootView: PetView(action: binding).environmentObject(settings))
-    }
-
-    private func rebuildPetContent() {
-        petPanel?.contentView = petHostingView()
+        let root = PetView()
+            .environmentObject(settings)
+            .environmentObject(runtime)
+        let hostingView = NSHostingView(rootView: root)
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
+        return hostingView
     }
 
     private func createStatusItem() {
@@ -98,12 +99,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func selectAction(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let selected = PetAction(rawValue: raw) else { return }
-        action = selected
+        runtime.action = selected
     }
 
     @objc private func openSettings() {
         if settingsWindow == nil {
-            let view = SettingsView().environmentObject(settings).environmentObject(reminderManager)
+            let view = SettingsView()
+                .environmentObject(settings)
+                .environmentObject(reminderManager)
+                .environmentObject(runtime)
             let window = NSWindow(contentViewController: NSHostingController(rootView: view))
             window.title = "AstraPet 设置"
             window.styleMask = [.titled, .closable, .miniaturizable]
