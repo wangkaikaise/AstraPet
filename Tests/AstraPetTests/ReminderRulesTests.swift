@@ -18,4 +18,9 @@ final class ReminderRulesTests: XCTestCase {
     func testReminderTimeTextIsZeroPadded() {
         XCTAssertEqual(PetReminder(title: "站起来", hour: 7, minute: 5).timeText, "07:05")
     }
+
+    func testEveryPetActionHasPresentationMetadata() {
+        XCTAssertEqual(PetAction.allCases.count, 4)
+        XCTAssertTrue(PetAction.allCases.allSatisfy { !$0.title.isEmpty && !$0.symbol.isEmpty })
+    }
 }

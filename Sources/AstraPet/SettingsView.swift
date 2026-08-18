@@ -4,6 +4,7 @@ import ServiceManagement
 struct SettingsView: View {
     @EnvironmentObject private var settings: PetSettings
     @EnvironmentObject private var reminders: ReminderManager
+    @EnvironmentObject private var runtime: PetRuntime
     @State private var title = ""
     @State private var time = Date()
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -12,6 +13,12 @@ struct SettingsView: View {
     var body: some View {
         TabView {
             Form {
+                Picker("动作预览", selection: $runtime.action) {
+                    ForEach(PetAction.allCases) { action in
+                        Label(action.title, systemImage: action.symbol).tag(action)
+                    }
+                }
+                .pickerStyle(.segmented)
                 Picker("光效主题", selection: $settings.theme) {
                     ForEach(GlowTheme.allCases) { Text($0.title).tag($0) }
                 }
