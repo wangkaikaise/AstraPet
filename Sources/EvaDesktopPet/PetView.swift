@@ -5,11 +5,13 @@ struct PetView: View {
     @EnvironmentObject private var settings: PetSettings
     @EnvironmentObject private var runtime: PetRuntime
     @EnvironmentObject private var systemMetrics: SystemMetricsMonitor
-    @State private var isBlinking = false
     @State private var message: String?
     @State private var tapCount = 0
     @State private var hostWindow: NSWindow?
     @State private var dragStartOrigin: CGPoint?
+    @State private var dragStartMouseLocation: CGPoint?
+    @State private var dragTargetOrigin: CGPoint?
+    @State private var dragSmoothingTask: Task<Void, Never>?
     @State private var dragDirection = DragDirection.none
     @State private var isDragging = false
 
@@ -35,6 +37,26 @@ struct PetView: View {
                     DragTrail(direction: dragDirection, phase: phase, color: actionAccent)
                         .frame(width: settings.size * 0.72, height: settings.size * 0.72)
                         .offset(y: 48)
+                        .transition(.opacity)
+                }
+
+                if runtime.action == .hover && !isDragging {
+                    FlightTrail(phase: phase, color: actionAccent)
+                        .frame(width: settings.size * 0.82, height: settings.size * 0.72)
+                        .offset(y: 52)
+                        .transition(.opacity)
+                }
+
+                if runtime.action == .play && !isDragging {
+                    PlaySparkles(phase: phase, color: actionAccent)
+                        .frame(width: settings.size * 0.80, height: settings.size * 0.80)
+                        .offset(y: 43)
+                        .transition(.scale.combined(with: .opacity))
+                }
+
+                if runtime.action == .sleep && !isDragging {
+                    SleepIndicator(phase: phase, color: actionAccent)
+                        .offset(x: settings.size * 0.27, y: 54)
                         .transition(.opacity)
                 }
 
@@ -67,7 +89,6 @@ struct PetView: View {
         .frame(width: settings.size + 140, height: settings.size + 140)
         .background(WindowReader { hostWindow = $0 })
         .contentShape(Rectangle())
-        .task { await blinkLoop() }
         .task(id: "\(settings.autoMood)-\(settings.moodInterval.rawValue)") { await moodLoop() }
         .task(id: "\(settings.showSystemMonitor)-\(settings.metricsRefreshInterval.rawValue)") {
             guard settings.showSystemMonitor else {
@@ -77,13 +98,14 @@ struct PetView: View {
             await systemMetrics.run(every: settings.metricsRefreshInterval.rawValue)
         }
         .onChange(of: runtime.action) { newAction in
-            isBlinking = false
             show(newAction == .sleep ? "晚安，我会安静陪着你" : "慢慢进入\(newAction.title)状态")
         }
         .onChange(of: settings.mood) { newMood in
             show("现在是：\(newMood.title)")
         }
         .animation(.easeInOut(duration: 2.0), value: settings.shieldEnabled)
+        .animation(.easeInOut(duration: 1.8), value: runtime.action)
+        .onDisappear { dragSmoothingTask?.cancel() }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("桌面伙伴 Eva，当前动作：\(runtime.action.title)，情绪：\(settings.mood.title)")
         .accessibilityAddTraits(.isButton)
@@ -108,17 +130,25 @@ struct PetView: View {
                 )
 
             Circle()
-                .fill(actionAccent)
+                .fill(
+                    RadialGradient(
+                        colors: [.white.opacity(0.94), actionAccent.opacity(0.72), actionAccent.opacity(0.34)],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: settings.size * 0.032
+                    )
+                )
                 .frame(width: settings.size * 0.058, height: settings.size * 0.058)
-                .overlay(Circle().stroke(.white.opacity(0.85), lineWidth: 1))
-                .shadow(color: actionAccent.opacity(0.95), radius: isDragging ? 10 : 6)
-                .scaleEffect(1 + sin(phase * (isDragging ? 1.9 : 0.28)) * 0.10)
-                .offset(y: settings.size * 0.045)
-                .animation(.easeInOut(duration: 1.2), value: runtime.action)
+                .overlay(Circle().stroke(.white.opacity(0.72), lineWidth: 0.8))
+                .shadow(color: actionAccent.opacity(0.38), radius: isDragging ? 12 : 9)
+                .scaleEffect(1 + sin(phase * (isDragging ? 1.4 : 0.22)) * 0.065)
+                .offset(
+                    x: settings.size * PetMotionSpec.chestCoreNormalizedX,
+                    y: settings.size * PetMotionSpec.chestCoreNormalizedY
+                )
+                .animation(.easeInOut(duration: 1.8), value: runtime.action)
         }
             .frame(width: settings.size, height: settings.size)
-            .id(spriteName)
-            .transition(.opacity.combined(with: .scale(scale: 0.985)))
             .opacity(settings.opacity)
             .scaleEffect(motion.scale)
             .rotationEffect(.degrees(motion.rotation))
@@ -133,66 +163,99 @@ struct PetView: View {
                 }
             }
             .help("点击和 Eva 互动；拖动时会根据方向奔跑")
-            .animation(.easeInOut(duration: 2.2), value: spriteName)
+            .animation(.easeInOut(duration: 1.8), value: runtime.action)
             .animation(.spring(response: 0.42, dampingFraction: 0.72), value: isDragging)
     }
 
     private var spriteName: String {
-        if runtime.action == .sleep { return "eva-glass-v11-sleep" }
-        if runtime.action == .cheer { return "eva-glass-v11" }
-        if settings.mood.usesGloomyExpression { return "eva-glass-v11-gloomy" }
-        if isBlinking { return "eva-glass-v11-blink" }
-        return "eva-glass-v11"
+        "eva-glass-v11"
     }
 
     private var actionAccent: Color {
-        if isDragging { return Color(red: 0.20, green: 0.95, blue: 1.0) }
+        if isDragging { return Color(red: 0.46, green: 0.82, blue: 0.86) }
         switch runtime.action {
-        case .idle: return Color(red: 0.10, green: 0.78, blue: 1.0)
-        case .hover: return Color(red: 0.25, green: 0.48, blue: 1.0)
-        case .cheer: return Color(red: 0.18, green: 1.0, blue: 0.72)
-        case .sleep: return Color(red: 0.48, green: 0.38, blue: 1.0)
+        case .idle: return Color(red: 0.44, green: 0.76, blue: 0.92)
+        case .hover: return Color(red: 0.52, green: 0.66, blue: 0.91)
+        case .cheer: return Color(red: 0.52, green: 0.86, blue: 0.70)
+        case .play: return Color(red: 0.94, green: 0.72, blue: 0.52)
+        case .sleep: return Color(red: 0.66, green: 0.62, blue: 0.86)
         }
     }
 
     private var dragGesture: some Gesture {
         DragGesture(minimumDistance: 2, coordinateSpace: .global)
-            .onChanged { value in
+            .onChanged { _ in
                 guard let hostWindow else { return }
                 if dragStartOrigin == nil {
                     dragStartOrigin = hostWindow.frame.origin
+                    dragStartMouseLocation = NSEvent.mouseLocation
+                    dragTargetOrigin = hostWindow.frame.origin
+                    startDragSmoothing()
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { isDragging = true }
                 }
-                guard let dragStartOrigin else { return }
-                hostWindow.setFrameOrigin(NSPoint(
-                    x: dragStartOrigin.x + value.translation.width,
-                    y: dragStartOrigin.y - value.translation.height
-                ))
-                dragDirection = DragDirection(translation: value.translation)
+                guard let dragStartOrigin, let dragStartMouseLocation else { return }
+                let mouse = NSEvent.mouseLocation
+                let delta = CGSize(
+                    width: mouse.x - dragStartMouseLocation.x,
+                    height: mouse.y - dragStartMouseLocation.y
+                )
+                dragTargetOrigin = CGPoint(
+                    x: dragStartOrigin.x + delta.width,
+                    y: dragStartOrigin.y + delta.height
+                )
+                dragDirection = DragDirection(translation: CGSize(width: delta.width, height: -delta.height))
             }
             .onEnded { _ in
                 dragStartOrigin = nil
+                dragStartMouseLocation = nil
                 withAnimation(.spring(response: 0.48, dampingFraction: 0.68)) {
                     isDragging = false
-                    dragDirection = .none
+                }
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 520_000_000)
+                    guard !isDragging else { return }
+                    withAnimation(.easeOut(duration: 0.3)) { dragDirection = .none }
                 }
             }
+    }
+
+    private func startDragSmoothing() {
+        dragSmoothingTask?.cancel()
+        dragSmoothingTask = Task { @MainActor in
+            while !Task.isCancelled {
+                guard let hostWindow, let target = dragTargetOrigin else { return }
+                let current = hostWindow.frame.origin
+                let dx = target.x - current.x
+                let dy = target.y - current.y
+                let distance = hypot(dx, dy)
+                if !isDragging && distance < 0.6 {
+                    hostWindow.setFrameOrigin(target)
+                    return
+                }
+                let response: CGFloat = isDragging ? 0.16 : 0.24
+                hostWindow.setFrameOrigin(NSPoint(
+                    x: current.x + dx * response,
+                    y: current.y + dy * response
+                ))
+                try? await Task.sleep(nanoseconds: PetMotionSpec.dragFrameNanoseconds)
+            }
+        }
     }
 
     private func dragMotionValues(phase: Double) -> MotionValues {
         let tilt: Double
         switch dragDirection {
-        case .left: tilt = -10
-        case .right: tilt = 10
+        case .left: tilt = -8
+        case .right: tilt = 8
         case .up: tilt = -3
         case .down: tilt = 3
         case .none: tilt = 0
         }
         return MotionValues(
-            x: sin(phase * 3.1) * 3.5,
-            y: -8 - abs(sin(phase * 3.1)) * 6,
-            rotation: tilt + sin(phase * 3.1) * 2.2,
-            scale: 1.035 + abs(sin(phase * 3.1)) * 0.025
+            x: sin(phase * 1.8) * 2.4,
+            y: -7 - abs(sin(phase * 1.8)) * 4,
+            rotation: tilt + sin(phase * 1.8) * 1.4,
+            scale: 1.025 + abs(sin(phase * 1.8)) * 0.018
         )
     }
 
@@ -200,17 +263,17 @@ struct PetView: View {
         switch action {
         case .idle:
             return MotionValues(
-                x: sin(phase * 0.13) * 1.5,
+                x: sin(phase * 0.13) * PetMotionSpec.idleHorizontalTravel,
                 y: sin(phase * 0.20) * 4.2,
                 rotation: sin(phase * 0.11) * 1.1,
                 scale: 1 + sin(phase * 0.16) * 0.009
             )
         case .hover:
             return MotionValues(
-                x: cos(phase * 0.18) * 4.5,
-                y: sin(phase * 0.27) * 7,
-                rotation: sin(phase * 0.16) * 2.1,
-                scale: 1.01 + sin(phase * 0.23) * 0.012
+                x: sin(phase * 0.16) * PetMotionSpec.hoverHorizontalTravel,
+                y: -5 + sin(phase * 0.24) * 7.5,
+                rotation: 3.2 + sin(phase * 0.14) * 2.3,
+                scale: 1.015 + sin(phase * 0.18) * 0.012
             )
         case .cheer:
             return MotionValues(
@@ -219,6 +282,13 @@ struct PetView: View {
                 rotation: sin(phase * 0.21) * 2.5,
                 scale: 1.025 + sin(phase * 0.20) * 0.014
             )
+        case .play:
+            return MotionValues(
+                x: sin(phase * 0.48) * 7,
+                y: -7 - abs(sin(phase * 0.62)) * 8,
+                rotation: sin(phase * 0.54) * 6,
+                scale: 1.025 + abs(sin(phase * 0.62)) * 0.030
+            )
         case .sleep:
             return MotionValues(
                 x: 0,
@@ -226,17 +296,6 @@ struct PetView: View {
                 rotation: -1.5 + sin(phase * 0.08) * 0.6,
                 scale: 0.98 + sin(phase * 0.09) * 0.006
             )
-        }
-    }
-
-    @MainActor
-    private func blinkLoop() async {
-        while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 7_800_000_000)
-            guard runtime.action == .idle, !settings.mood.usesGloomyExpression else { continue }
-            withAnimation(.easeInOut(duration: 0.14)) { isBlinking = true }
-            try? await Task.sleep(nanoseconds: 260_000_000)
-            withAnimation(.easeInOut(duration: 0.16)) { isBlinking = false }
         }
     }
 
@@ -252,12 +311,12 @@ struct PetView: View {
 
     private func interact() {
         tapCount += 1
-        runtime.action = .cheer
+        runtime.action = .play
         let messages = messagesForCurrentMood
         show(messages[tapCount % messages.count])
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 30_000_000_000)
-            if runtime.action == .cheer { runtime.action = .idle }
+            try? await Task.sleep(nanoseconds: 12_000_000_000)
+            if runtime.action == .play { runtime.action = .idle }
         }
     }
 
@@ -426,6 +485,94 @@ private struct DragTrail: View {
         case .down: return .degrees(-90)
         default: return .zero
         }
+    }
+}
+
+private struct FlightTrail: View {
+    let phase: Double
+    let color: Color
+
+    var body: some View {
+        let movingRight = cos(phase * 0.16) >= 0
+        ZStack {
+            ForEach(0..<3, id: \.self) { index in
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [color.opacity(0.05), color.opacity(0.32 - Double(index) * 0.07), .clear],
+                            startPoint: movingRight ? .trailing : .leading,
+                            endPoint: movingRight ? .leading : .trailing
+                        )
+                    )
+                    .frame(width: 46 - CGFloat(index) * 8, height: 1.5)
+                    .offset(
+                        x: (movingRight ? -1 : 1) * (72 + CGFloat(index) * 18),
+                        y: CGFloat(index - 1) * 16
+                    )
+                    .opacity(0.62 + sin(phase * 0.7 + Double(index)) * 0.16)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+private struct PlaySparkles: View {
+    let phase: Double
+    let color: Color
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<4, id: \.self) { index in
+                PlaySparkleParticle(index: index, phase: phase, color: color)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+private struct PlaySparkleParticle: View {
+    let index: Int
+    let phase: Double
+    let color: Color
+
+    var body: some View {
+        Image(systemName: symbolName)
+            .font(.system(size: symbolSize, weight: .medium))
+            .foregroundStyle(symbolColor)
+            .offset(x: horizontalOffset, y: verticalOffset)
+            .scaleEffect(scale)
+    }
+
+    private var isSparkle: Bool { index.isMultiple(of: 2) }
+    private var angle: Double { phase * 0.42 + Double(index) * .pi / 2 }
+    private var symbolName: String { isSparkle ? "sparkle" : "circle.fill" }
+    private var symbolSize: CGFloat { isSparkle ? 12 : 5 }
+    private var symbolColor: Color { isSparkle ? .white.opacity(0.72) : color.opacity(0.62) }
+    private var horizontalOffset: CGFloat {
+        CGFloat(cos(angle)) * (76 + CGFloat(index % 2) * 10)
+    }
+    private var verticalOffset: CGFloat {
+        CGFloat(sin(angle)) * (66 + CGFloat(index % 2) * 8)
+    }
+    private var scale: CGFloat {
+        CGFloat(0.78 + sin(phase * 0.8 + Double(index)) * 0.18)
+    }
+}
+
+private struct SleepIndicator: View {
+    let phase: Double
+    let color: Color
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 2) {
+            Text("z").font(.system(size: 11, weight: .semibold, design: .rounded))
+            Text("z").font(.system(size: 15, weight: .semibold, design: .rounded))
+            Text("z").font(.system(size: 19, weight: .semibold, design: .rounded))
+        }
+        .foregroundStyle(color.opacity(0.58))
+        .offset(y: sin(phase * 0.14) * 5)
+        .opacity(0.58 + sin(phase * 0.18) * 0.16)
+        .allowsHitTesting(false)
     }
 }
 

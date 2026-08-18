@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 enum PetAction: String, CaseIterable, Codable, Identifiable {
-    case idle, hover, cheer, sleep
+    case idle, hover, cheer, play, sleep
 
     var id: String { rawValue }
 
@@ -11,6 +11,7 @@ enum PetAction: String, CaseIterable, Codable, Identifiable {
         case .idle: "待机"
         case .hover: "巡航"
         case .cheer: "开心"
+        case .play: "玩耍"
         case .sleep: "休眠"
         }
     }
@@ -20,9 +21,18 @@ enum PetAction: String, CaseIterable, Codable, Identifiable {
         case .idle: "sparkles"
         case .hover: "paperplane.fill"
         case .cheer: "hands.clap.fill"
+        case .play: "wand.and.stars"
         case .sleep: "moon.zzz.fill"
         }
     }
+}
+
+enum PetMotionSpec {
+    static let chestCoreNormalizedX: CGFloat = 0
+    static let chestCoreNormalizedY: CGFloat = 0.045
+    static let idleHorizontalTravel: CGFloat = 1.5
+    static let hoverHorizontalTravel: CGFloat = 14
+    static let dragFrameNanoseconds: UInt64 = 16_666_667
 }
 
 enum GlowTheme: String, CaseIterable, Codable, Identifiable {
