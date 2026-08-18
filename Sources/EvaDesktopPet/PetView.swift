@@ -3,6 +3,7 @@ import SwiftUI
 struct PetView: View {
     @EnvironmentObject private var settings: PetSettings
     @EnvironmentObject private var runtime: PetRuntime
+    @EnvironmentObject private var systemMetrics: SystemMetricsMonitor
     @State private var isBlinking = false
     @State private var message: String?
     @State private var tapCount = 0
@@ -36,15 +37,30 @@ struct PetView: View {
                         .foregroundStyle(Color(red: 1, green: 0.91, blue: 0.72))
                         .overlay(Capsule().stroke(settings.theme.color.opacity(0.5)))
                         .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .offset(y: 2)
+                        .offset(y: settings.showSystemMonitor ? settings.size + 8 : 2)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .overlay(alignment: .topTrailing) {
+                if settings.showSystemMonitor {
+                    MetricsHUD(snapshot: systemMetrics.snapshot)
+                        .padding(.top, 8)
+                        .padding(.trailing, 4)
+                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                }
+            }
         }
         .frame(width: settings.size + 140, height: settings.size + 140)
         .contentShape(Rectangle())
         .task { await blinkLoop() }
         .task(id: "\(settings.autoMood)-\(settings.moodInterval.rawValue)") { await moodLoop() }
+        .task(id: "\(settings.showSystemMonitor)-\(settings.metricsRefreshInterval.rawValue)") {
+            guard settings.showSystemMonitor else {
+                systemMetrics.reset()
+                return
+            }
+            await systemMetrics.run(every: settings.metricsRefreshInterval.rawValue)
+        }
         .onChange(of: runtime.action) { newAction in
             isBlinking = false
             show(newAction == .sleep ? "晚安，我会安静陪着你" : "慢慢进入\(newAction.title)状态")
@@ -54,7 +70,7 @@ struct PetView: View {
         }
         .animation(.easeInOut(duration: 1.2), value: settings.shieldEnabled)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("桌面伙伴 Astra，当前动作：\(runtime.action.title)，情绪：\(settings.mood.title)")
+        .accessibilityLabel("桌面伙伴 Eva，当前动作：\(runtime.action.title)，情绪：\(settings.mood.title)")
         .accessibilityAddTraits(.isButton)
     }
 
@@ -78,16 +94,16 @@ struct PetView: View {
                     }
                 }
             }
-            .help("点击和 Astra 互动；拖动可移动位置")
+            .help("点击和 Eva 互动；拖动可移动位置")
             .animation(.easeInOut(duration: 1.15), value: spriteName)
     }
 
     private var spriteName: String {
-        if runtime.action == .sleep { return "robot-warm-sleep" }
-        if runtime.action == .cheer { return "robot-warm-happy" }
-        if settings.mood.usesGloomyExpression { return "robot-warm-gloomy" }
-        if isBlinking { return "robot-warm-blink" }
-        return "robot-warm"
+        if runtime.action == .sleep { return "eva-original-sleep" }
+        if runtime.action == .cheer { return "eva-original-happy" }
+        if settings.mood.usesGloomyExpression { return "eva-original-gloomy" }
+        if isBlinking { return "eva-original-blink" }
+        return "eva-original"
     }
 
     private func motionValues(for action: PetAction, phase: Double) -> MotionValues {
@@ -174,6 +190,51 @@ struct PetView: View {
                 withAnimation(.easeOut(duration: 0.55)) { message = nil }
             }
         }
+    }
+}
+
+private struct MetricsHUD: View {
+    let snapshot: SystemMetricsSnapshot
+
+    @EnvironmentObject private var settings: PetSettings
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            if settings.showCPUUsage { metric("CPU", value: percentage(snapshot.cpuUsage), symbol: "cpu") }
+            if settings.showCPUTemperature {
+                metric("CPU 温度", value: temperature(snapshot.cpuTemperature, fallback: snapshot.thermalState), symbol: "thermometer.medium")
+            }
+            if settings.showGPUUsage { metric("GPU", value: percentage(snapshot.gpuUsage), symbol: "display") }
+            if settings.showGPUTemperature {
+                metric("GPU 温度", value: temperature(snapshot.gpuTemperature, fallback: "系统限制"), symbol: "thermometer.medium")
+            }
+        }
+        .font(.system(size: 10, weight: .semibold, design: .rounded))
+        .monospacedDigit()
+        .padding(.horizontal, 9)
+        .padding(.vertical, 8)
+        .background(Color(red: 0.03, green: 0.10, blue: 0.18).opacity(0.86), in: RoundedRectangle(cornerRadius: 11))
+        .overlay(RoundedRectangle(cornerRadius: 11).stroke(Color.cyan.opacity(0.32)))
+        .foregroundStyle(.white.opacity(0.92))
+        .allowsHitTesting(false)
+    }
+
+    private func metric(_ label: String, value: String, symbol: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: symbol).frame(width: 11)
+            Text(label)
+            Spacer(minLength: 5)
+            Text(value).foregroundStyle(.cyan)
+        }
+        .frame(width: 112)
+    }
+
+    private func percentage(_ value: Double?) -> String {
+        value.map { String(format: "%.0f%%", $0) } ?? "读取中"
+    }
+
+    private func temperature(_ value: Double?, fallback: String) -> String {
+        value.map { String(format: "%.0f°C", $0) } ?? fallback
     }
 }
 

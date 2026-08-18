@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let settings = PetSettings()
     let reminderManager = ReminderManager()
     let runtime = PetRuntime()
+    let systemMetrics = SystemMetricsMonitor()
 
     private var petPanel: NSPanel?
     private var settingsWindow: NSWindow?
@@ -59,6 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let root = PetView()
             .environmentObject(settings)
             .environmentObject(runtime)
+            .environmentObject(systemMetrics)
         let hostingView = NSHostingView(rootView: root)
         hostingView.wantsLayer = true
         hostingView.layer?.backgroundColor = NSColor.clear.cgColor
@@ -67,14 +69,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func createStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(systemSymbolName: "sparkles", accessibilityDescription: "AstraPet")
+        item.button?.image = NSImage(systemSymbolName: "sparkles", accessibilityDescription: "Eva Desktop Pet")
         item.menu = buildMenu()
         statusItem = item
     }
 
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(withTitle: "显示 / 隐藏 Astra", action: #selector(togglePet), keyEquivalent: "h").target = self
+        menu.addItem(withTitle: "显示 / 隐藏 Eva", action: #selector(togglePet), keyEquivalent: "h").target = self
         let actions = NSMenuItem(title: "动作", action: nil, keyEquivalent: "")
         let actionMenu = NSMenu()
         for item in PetAction.allCases {
@@ -88,7 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "设置…", action: #selector(openSettings), keyEquivalent: ",").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "退出 AstraPet", action: #selector(quit), keyEquivalent: "q").target = self
+        menu.addItem(withTitle: "退出 Eva Desktop Pet", action: #selector(quit), keyEquivalent: "q").target = self
         return menu
     }
 
@@ -108,8 +110,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .environmentObject(settings)
                 .environmentObject(reminderManager)
                 .environmentObject(runtime)
+                .environmentObject(systemMetrics)
             let window = NSWindow(contentViewController: NSHostingController(rootView: view))
-            window.title = "AstraPet 设置"
+            window.title = "Eva Desktop Pet 设置"
             window.styleMask = [.titled, .closable, .miniaturizable]
             window.center()
             window.isReleasedWhenClosed = false

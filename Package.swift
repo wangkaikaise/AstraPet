@@ -2,20 +2,20 @@
 import PackageDescription
 
 let package = Package(
-    name: "AstraPet",
+    name: "EvaDesktopPet",
     platforms: [.macOS(.v13)],
     products: [
-        .executable(name: "AstraPet", targets: ["AstraPet"])
+        .executable(name: "EvaDesktopPet", targets: ["EvaDesktopPet"])
     ],
     targets: [
         .executableTarget(
-            name: "AstraPet",
+            name: "EvaDesktopPet",
             exclude: ["Resources"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
-            name: "AstraPetTests",
-            dependencies: ["AstraPet"],
+            name: "EvaDesktopPetTests",
+            dependencies: ["EvaDesktopPet"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         )
     ]

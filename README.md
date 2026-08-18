@@ -1,8 +1,8 @@
-# AstraPet
+# Eva Desktop Pet
 
-AstraPet 是一款原生 macOS 桌面宠物：一位温暖、安静的 AI 机器人伙伴。它会悬浮在桌面、用舒缓动作陪伴你、响应点击，并按计划发送每日提醒。
+Eva Desktop Pet 是一款原生 macOS 桌面伙伴：一位原创的白色悬浮机器人。她会用舒缓动作陪伴你、响应点击、发送提醒，还可以在桌面显示 CPU 与 GPU 的实时状态。
 
-![AstraPet warm companion](Sources/AstraPet/Resources/robot-warm.png)
+![Eva Desktop Pet](Sources/EvaDesktopPet/Resources/eva-original.png)
 
 ## 功能
 
@@ -13,9 +13,11 @@ AstraPet 是一款原生 macOS 桌面宠物：一位温暖、安静的 AI 机器
 - 暖色实体光效底座，可调节亮度
 - 光晕、气泡、轨道三种可开关防护罩
 - 点击互动、气泡回应和右键动作菜单
-- 琥珀、腮红、鼠尾草三套暖心光效
+- 星际青、玫瑰金、极光紫三套环境光效
 - 尺寸、透明度、动作速度、置顶状态设置
 - 12 FPS 低功耗动画、图片缓存及精简尺寸素材，降低 CPU 和内存占用
+- 可配置的 CPU 占用率、CPU 热状态、GPU 占用率与 GPU 温度状态卡片
+- 2、5、10 秒三档性能数据刷新频率
 - 每日重复的 macOS 本地通知提醒
 - 菜单栏快速显示/隐藏、切换动作和打开设置
 - 可选登录后自动启动
@@ -29,7 +31,7 @@ AstraPet 是一款原生 macOS 桌面宠物：一位温暖、安静的 AI 机器
 ## 开发运行
 
 ```bash
-swift run AstraPet
+swift run EvaDesktopPet
 ```
 
 也可以在 Xcode 中选择 `File > Open`，直接打开仓库目录下的 `Package.swift`。
@@ -45,14 +47,14 @@ swift test
 ```bash
 chmod +x scripts/build-app.sh
 ./scripts/build-app.sh
-open dist/AstraPet.app
+open "dist/Eva Desktop Pet.app"
 ```
 
 脚本会执行 release 构建、组装应用包，并使用本机 ad-hoc 签名。若要公开分发，应使用 Apple Developer ID 签名并完成 notarization。
 
 ## 使用
 
-1. 启动后，Astra 会出现在主屏幕右下角。
+1. 启动后，Eva 会出现在主屏幕右下角。
 2. 拖动机器人可改变位置；点击会触发回应。
 3. 右键机器人可切换动作。
 4. 点击菜单栏的星光图标可打开设置和提醒管理。
@@ -62,4 +64,13 @@ open dist/AstraPet.app
 
 ## 视觉资产
 
-机器人视觉为本项目原创 AI 生成资产，不复刻任何影视角色、商标或标志。代码使用 MIT License；视觉资产仅随本项目使用和再分发。
+白色悬浮机器人视觉为本项目原创 AI 生成资产，与已有影视角色保持不同的比例、脸部、胸口指示灯和玫瑰金结构。代码使用 MIT License；视觉资产仅随本项目使用和再分发。
+
+## macOS 性能数据说明
+
+CPU 占用率来自公开的 Mach 主机统计接口。GPU 占用率会读取当前机型可用的 IORegistry 性能统计，部分旧机型可能不提供。macOS 没有向普通第三方应用开放统一、公开的 CPU/GPU 摄氏温度 API，因此应用会显示 Apple 提供的系统热状态，并对无法取得的 GPU 温度明确标记为“系统限制”，不会猜测或伪造温度。
+
+## 版本路线
+
+- `1.x`：完善 macOS 桌面伙伴、系统状态、提醒和互动体验。
+- `2.x`：抽离共享数据模型与角色资产规范，为 Windows 桌面版及手机 App 做跨平台准备。
