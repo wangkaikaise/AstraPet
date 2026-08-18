@@ -77,6 +77,17 @@ final class ReminderRulesTests: XCTestCase {
         XCTAssertEqual(DragDirection(translation: CGSize(width: 2, height: 2)), .none)
     }
 
+    func testRocketRotationAndWakeFollowDragDirection() {
+        XCTAssertEqual(DragDirection.up.rocketRotation, 0)
+        XCTAssertEqual(DragDirection.right.rocketRotation, 90)
+        XCTAssertEqual(DragDirection.down.rocketRotation, 180)
+        XCTAssertEqual(DragDirection.left.rocketRotation, -90)
+        XCTAssertEqual(DragDirection.right.unitVector.dx, 1)
+        XCTAssertEqual(DragDirection.right.unitVector.dy, 0)
+        XCTAssertEqual(DragDirection.down.unitVector.dx, 0)
+        XCTAssertEqual(DragDirection.down.unitVector.dy, 1)
+    }
+
     func testMotionSystemKeepsCoreCenteredAndCruiseDistinct() {
         XCTAssertEqual(PetMotionSpec.chestCoreNormalizedX, 0)
         XCTAssertEqual(PetMotionSpec.chestCoreNormalizedY, 0.045, accuracy: 0.0001)

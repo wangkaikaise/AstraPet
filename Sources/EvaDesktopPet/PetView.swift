@@ -38,7 +38,7 @@ struct PetView: View {
                     .frame(width: settings.size * 0.72, height: 46)
                     .offset(y: settings.size + 42)
 
-                if isDragging {
+                if isDragging && runtime.action != .play {
                     DragTrail(direction: dragDirection, phase: phase, color: actionAccent)
                         .frame(width: settings.size * 0.72, height: settings.size * 0.72)
                         .offset(y: 48)
@@ -61,7 +61,7 @@ struct PetView: View {
 
                 if runtime.action == .sleep && !isDragging {
                     SleepIndicator(phase: phase, color: actionAccent)
-                        .offset(x: settings.size * 0.27, y: 54)
+                        .offset(x: settings.size * 0.43 + 42, y: 42)
                         .transition(.opacity)
                 }
 
@@ -139,8 +139,10 @@ struct PetView: View {
     }
 
     private func robot(phase: Double, playPhase: Double) -> some View {
-        let motion = isDragging ? dragMotionValues(phase: phase) : motionValues(for: runtime.action, phase: phase)
-        let isRocketMode = runtime.action == .play && !isDragging
+        let isRocketMode = runtime.action == .play
+        let motion = isRocketMode
+            ? motionValues(for: .play, phase: phase)
+            : (isDragging ? dragMotionValues(phase: phase) : motionValues(for: runtime.action, phase: phase))
         return ZStack {
             ZStack {
                 Image(nsImage: RobotAsset.image(named: spriteName))
@@ -185,12 +187,18 @@ struct PetView: View {
             .opacity(isRocketMode ? 0 : 1)
             .scaleEffect(isRocketMode ? 0.62 : 1)
 
-            PlayRocket(phase: playPhase, color: actionAccent)
+            PlayRocket(
+                phase: playPhase,
+                color: actionAccent,
+                isDragging: isDragging,
+                dragDirection: dragDirection
+            )
                 .frame(width: settings.size * 0.88, height: settings.size * 0.80)
                 .opacity(isRocketMode ? 1 : 0)
                 .scaleEffect(isRocketMode ? 1 : 0.48)
         }
             .frame(width: settings.size, height: settings.size)
+            .contentShape(Rectangle())
             .opacity(settings.opacity)
             .scaleEffect(motion.scale)
             .rotationEffect(.degrees(motion.rotation))
@@ -204,7 +212,7 @@ struct PetView: View {
                     }
                 }
             }
-            .help("点击和伊娃互动；拖动时会根据方向奔跑")
+            .help("点击和伊娃互动；拖动时会根据方向反馈动作与尾迹")
             .animation(.easeInOut(duration: 1.8), value: runtime.action)
             .animation(.spring(response: 0.42, dampingFraction: 0.72), value: isDragging)
     }
@@ -252,7 +260,7 @@ struct PetView: View {
                     width: mouseLocation.x - previousMouseLocation.x,
                     height: previousMouseLocation.y - mouseLocation.y
                 ))
-                if nextDirection != dragDirection {
+                if nextDirection != .none && nextDirection != dragDirection {
                     dragDirection = nextDirection
                 }
                 lastDragMouseLocation = mouseLocation
@@ -572,6 +580,24 @@ enum DragDirection: Equatable {
             self = translation.height < 0 ? .up : .down
         }
     }
+
+    var unitVector: CGVector {
+        switch self {
+        case .none, .up: CGVector(dx: 0, dy: -1)
+        case .down: CGVector(dx: 0, dy: 1)
+        case .left: CGVector(dx: -1, dy: 0)
+        case .right: CGVector(dx: 1, dy: 0)
+        }
+    }
+
+    var rocketRotation: Double {
+        switch self {
+        case .none, .up: 0
+        case .right: 90
+        case .down: 180
+        case .left: -90
+        }
+    }
 }
 
 private struct WindowReader: NSViewRepresentable {
@@ -668,6 +694,8 @@ private struct FlightTrail: View {
 private struct PlayRocket: View {
     let phase: Double
     let color: Color
+    let isDragging: Bool
+    let dragDirection: DragDirection
 
     var body: some View {
         GeometryReader { geometry in
@@ -675,28 +703,103 @@ private struct PlayRocket: View {
             let introduction = min(max(phase / 0.8, 0), 1)
             let easedIntroduction = introduction * introduction * (3 - 2 * introduction)
             let flightPhase = max(phase - 0.45, 0) * 0.72
-            let horizontalTravel = CGFloat(sin(flightPhase)) * geometry.size.width * 0.28 * easedIntroduction
-            let verticalTravel = CGFloat(sin(flightPhase * 2)) * geometry.size.height * 0.17 * easedIntroduction
-                - geometry.size.height * 0.06 * easedIntroduction
+            let horizontalTravel = isDragging
+                ? CGFloat.zero
+                : CGFloat(sin(flightPhase)) * geometry.size.width * 0.28 * easedIntroduction
+            let verticalTravel = isDragging
+                ? -geometry.size.height * 0.03
+                : CGFloat(sin(flightPhase * 2)) * geometry.size.height * 0.17 * easedIntroduction
+                    - geometry.size.height * 0.06 * easedIntroduction
             let horizontalVelocity = cos(flightPhase) * Double(geometry.size.width * 0.28)
             let verticalVelocity = cos(flightPhase * 2) * Double(geometry.size.height * 0.34)
-            let flightAngle = (atan2(verticalVelocity, horizontalVelocity) * 180 / .pi + 90) * easedIntroduction
+            let automaticAngle = (atan2(verticalVelocity, horizontalVelocity) * 180 / .pi + 90) * easedIntroduction
+            let flightAngle = isDragging ? dragDirection.rocketRotation : automaticAngle
+            let direction = dragDirection.unitVector
 
-            RocketBody(phase: phase, color: color)
-                .frame(width: size * 0.30, height: size * 0.54)
-                .rotationEffect(.degrees(flightAngle))
-                .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                .offset(x: horizontalTravel, y: verticalTravel)
-                .shadow(color: color.opacity(0.24), radius: 12)
+            ZStack {
+                if isDragging {
+                    RocketDragWake(
+                        phase: phase,
+                        color: color,
+                        direction: direction,
+                        rotation: flightAngle,
+                        rocketSize: size
+                    )
+                }
+
+                RocketBody(phase: phase, color: color, isBoosted: isDragging)
+                    .frame(width: size * 0.30, height: size * 0.54)
+                    .rotationEffect(.degrees(flightAngle))
+                    .shadow(color: color.opacity(isDragging ? 0.42 : 0.24), radius: isDragging ? 16 : 12)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            .offset(x: horizontalTravel, y: verticalTravel)
+            .animation(.easeOut(duration: 0.16), value: dragDirection)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 }
 
+private struct RocketDragWake: View {
+    let phase: Double
+    let color: Color
+    let direction: CGVector
+    let rotation: Double
+    let rocketSize: CGFloat
+
+    var body: some View {
+        let perpendicular = CGVector(dx: -direction.dy, dy: direction.dx)
+
+        ZStack {
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [.white.opacity(0.18), color.opacity(0.10), .clear],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: rocketSize * 0.19, height: rocketSize * 0.40)
+                .rotationEffect(.degrees(rotation))
+                .offset(
+                    x: -direction.dx * rocketSize * 0.22,
+                    y: -direction.dy * rocketSize * 0.22
+                )
+                .blur(radius: 8)
+
+            ForEach(0..<3, id: \.self) { index in
+                let distance = rocketSize * (0.28 + CGFloat(index) * 0.10)
+                let lateral = (CGFloat(index) - 1) * rocketSize * 0.09
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [color.opacity(0.58 - Double(index) * 0.11), .clear],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(
+                        width: max(1.5, rocketSize * 0.014),
+                        height: rocketSize * (0.19 + CGFloat(index) * 0.035)
+                    )
+                    .rotationEffect(.degrees(rotation))
+                    .offset(
+                        x: -direction.dx * distance + perpendicular.dx * lateral,
+                        y: -direction.dy * distance + perpendicular.dy * lateral
+                    )
+                    .opacity(0.70 + sin(phase * 5 + Double(index)) * 0.16)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 private struct RocketBody: View {
     let phase: Double
     let color: Color
+    let isBoosted: Bool
 
     var body: some View {
         GeometryReader { geometry in
@@ -756,11 +859,11 @@ private struct RocketBody: View {
                         )
                     )
                     .frame(
-                        width: width * (0.18 + abs(sin(phase * 5)) * 0.05),
-                        height: height * (0.25 + abs(sin(phase * 4)) * 0.05)
+                        width: width * ((isBoosted ? 0.23 : 0.18) + abs(sin(phase * 5)) * 0.05),
+                        height: height * ((isBoosted ? 0.42 : 0.25) + abs(sin(phase * 4)) * 0.05)
                     )
-                    .offset(y: height * 0.48)
-                    .blur(radius: 1.4)
+                    .offset(y: height * (isBoosted ? 0.56 : 0.48))
+                    .blur(radius: isBoosted ? 2.2 : 1.4)
             }
             .frame(width: width, height: height)
         }
@@ -829,14 +932,32 @@ private struct SleepIndicator: View {
     let color: Color
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 2) {
-            Text("z").font(.system(size: 11, weight: .semibold, design: .rounded))
-            Text("z").font(.system(size: 15, weight: .semibold, design: .rounded))
-            Text("z").font(.system(size: 19, weight: .semibold, design: .rounded))
+        HStack(alignment: .center, spacing: 7) {
+            Image(systemName: "moon.zzz.fill")
+                .font(.system(size: 23, weight: .semibold))
+
+            HStack(alignment: .bottom, spacing: 1) {
+                Text("z").font(.system(size: 13, weight: .bold, design: .rounded))
+                Text("z").font(.system(size: 18, weight: .bold, design: .rounded))
+                Text("z").font(.system(size: 25, weight: .bold, design: .rounded))
+            }
         }
-        .foregroundStyle(color.opacity(0.58))
-        .offset(y: sin(phase * 0.14) * 5)
-        .opacity(0.58 + sin(phase * 0.18) * 0.16)
+        .foregroundStyle(
+            LinearGradient(
+                colors: [.white.opacity(0.94), color.opacity(0.88)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .padding(.horizontal, 11)
+        .padding(.vertical, 7)
+        .background(.ultraThinMaterial, in: Capsule())
+        .background(Color.black.opacity(0.20), in: Capsule())
+        .overlay(Capsule().stroke(.white.opacity(0.52), lineWidth: 1))
+        .shadow(color: color.opacity(0.48), radius: 12)
+        .offset(y: sin(phase * 0.14) * 6)
+        .scaleEffect(1 + sin(phase * 0.18) * 0.045)
+        .opacity(0.82 + sin(phase * 0.18) * 0.12)
         .allowsHitTesting(false)
     }
 }
