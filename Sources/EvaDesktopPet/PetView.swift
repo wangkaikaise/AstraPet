@@ -523,17 +523,39 @@ private struct PlaySparkles: View {
     var body: some View {
         ZStack {
             ForEach(0..<4, id: \.self) { index in
-                Image(systemName: index.isMultiple(of: 2) ? "sparkle" : "circle.fill")
-                    .font(.system(size: index.isMultiple(of: 2) ? 12 : 5, weight: .medium))
-                    .foregroundStyle(index.isMultiple(of: 2) ? .white.opacity(0.72) : color.opacity(0.62))
-                    .offset(
-                        x: cos(phase * 0.42 + Double(index) * .pi / 2) * (76 + CGFloat(index % 2) * 10),
-                        y: sin(phase * 0.42 + Double(index) * .pi / 2) * (66 + CGFloat(index % 2) * 8)
-                    )
-                    .scaleEffect(0.78 + sin(phase * 0.8 + Double(index)) * 0.18)
+                PlaySparkleParticle(index: index, phase: phase, color: color)
             }
         }
         .allowsHitTesting(false)
+    }
+}
+
+private struct PlaySparkleParticle: View {
+    let index: Int
+    let phase: Double
+    let color: Color
+
+    var body: some View {
+        Image(systemName: symbolName)
+            .font(.system(size: symbolSize, weight: .medium))
+            .foregroundStyle(symbolColor)
+            .offset(x: horizontalOffset, y: verticalOffset)
+            .scaleEffect(scale)
+    }
+
+    private var isSparkle: Bool { index.isMultiple(of: 2) }
+    private var angle: Double { phase * 0.42 + Double(index) * .pi / 2 }
+    private var symbolName: String { isSparkle ? "sparkle" : "circle.fill" }
+    private var symbolSize: CGFloat { isSparkle ? 12 : 5 }
+    private var symbolColor: Color { isSparkle ? .white.opacity(0.72) : color.opacity(0.62) }
+    private var horizontalOffset: CGFloat {
+        CGFloat(cos(angle)) * (76 + CGFloat(index % 2) * 10)
+    }
+    private var verticalOffset: CGFloat {
+        CGFloat(sin(angle)) * (66 + CGFloat(index % 2) * 8)
+    }
+    private var scale: CGFloat {
+        CGFloat(0.78 + sin(phase * 0.8 + Double(index)) * 0.18)
     }
 }
 
