@@ -64,7 +64,8 @@ struct SettingsView: View {
                     Slider(value: $settings.baseBrightness, in: 0.1...1, step: 0.05) {
                         Text("底部光效亮度")
                     } minimumValueLabel: { Image(systemName: "sun.min") } maximumValueLabel: { Image(systemName: "sun.max.fill") }
-                    LabeledContent("统一配色", value: "白色 · 黑色 · 电光蓝")
+                    LabeledContent("基础配色", value: "白色 · 黑色 · 电光蓝")
+                    LabeledContent("动态核心", value: "动作切换时改变颜色")
                     Text("底部不再绘制实体底座，只保留透明玻璃折射和柔和蓝色光池。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -79,7 +80,7 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .disabled(!settings.shieldEnabled)
-                    Text("防护罩、光池和信息卡片使用统一的透明玻璃风格。")
+                    Text("新版采用扫描弧、刻度节点和分层轨道，保持透明但增强科技感。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -107,9 +108,10 @@ struct SettingsView: View {
                 .disabled(!settings.showSystemMonitor)
 
                 Section("玻璃卡片样式") {
-                    Slider(value: $settings.metricsBackgroundOpacity, in: 0.05...0.7, step: 0.05) {
+                    Slider(value: $settings.metricsBackgroundOpacity, in: 0...0.75, step: 0.05) {
                         Text("背景深度")
-                    } minimumValueLabel: { Text("通透") } maximumValueLabel: { Text("清晰") }
+                    } minimumValueLabel: { Text("全透明") } maximumValueLabel: { Text("清晰") }
+                    LabeledContent("当前背景", value: settings.metricsBackgroundOpacity == 0 ? "完全透明" : "\(Int(settings.metricsBackgroundOpacity * 100))%")
                     Picker("字体", selection: $settings.metricFontStyle) {
                         ForEach(MetricFontStyle.allCases) { style in Text(style.title).tag(style) }
                     }

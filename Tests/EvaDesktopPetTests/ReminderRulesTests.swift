@@ -58,4 +58,12 @@ final class ReminderRulesTests: XCTestCase {
     func testMetricsRefreshIntervalsStayLowFrequency() {
         XCTAssertEqual(MetricsRefreshInterval.allCases.map(\.rawValue), [2, 5, 10])
     }
+
+    func testDragDirectionUsesDominantAxis() {
+        XCTAssertEqual(DragDirection(translation: CGSize(width: -40, height: 5)), .left)
+        XCTAssertEqual(DragDirection(translation: CGSize(width: 40, height: 5)), .right)
+        XCTAssertEqual(DragDirection(translation: CGSize(width: 4, height: -30)), .up)
+        XCTAssertEqual(DragDirection(translation: CGSize(width: 4, height: 30)), .down)
+        XCTAssertEqual(DragDirection(translation: CGSize(width: 2, height: 2)), .none)
+    }
 }

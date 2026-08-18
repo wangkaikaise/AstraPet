@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct PetView: View {
@@ -7,6 +8,10 @@ struct PetView: View {
     @State private var isBlinking = false
     @State private var message: String?
     @State private var tapCount = 0
+    @State private var hostWindow: NSWindow?
+    @State private var dragStartOrigin: CGPoint?
+    @State private var dragDirection = DragDirection.none
+    @State private var isDragging = false
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
@@ -25,6 +30,13 @@ struct PetView: View {
                 GlassLightPool(phase: phase, brightness: settings.baseBrightness, color: settings.theme.color)
                     .frame(width: settings.size * 0.72, height: 46)
                     .offset(y: settings.size + 42)
+
+                if isDragging {
+                    DragTrail(direction: dragDirection, phase: phase, color: actionAccent)
+                        .frame(width: settings.size * 0.72, height: settings.size * 0.72)
+                        .offset(y: 48)
+                        .transition(.opacity)
+                }
 
                 robot(phase: phase)
 
@@ -53,6 +65,7 @@ struct PetView: View {
             }
         }
         .frame(width: settings.size + 140, height: settings.size + 140)
+        .background(WindowReader { hostWindow = $0 })
         .contentShape(Rectangle())
         .task { await blinkLoop() }
         .task(id: "\(settings.autoMood)-\(settings.moodInterval.rawValue)") { await moodLoop() }
@@ -77,10 +90,32 @@ struct PetView: View {
     }
 
     private func robot(phase: Double) -> some View {
-        let motion = motionValues(for: runtime.action, phase: phase)
-        return Image(nsImage: RobotAsset.image(named: spriteName))
-            .resizable()
-            .scaledToFit()
+        let motion = isDragging ? dragMotionValues(phase: phase) : motionValues(for: runtime.action, phase: phase)
+        return ZStack {
+            Image(nsImage: RobotAsset.image(named: spriteName))
+                .resizable()
+                .scaledToFit()
+
+            Image(nsImage: RobotAsset.image(named: spriteName))
+                .resizable()
+                .scaledToFit()
+                .scaleEffect(x: -1, y: 1)
+                .mask(
+                    Capsule()
+                        .frame(width: settings.size * 0.095, height: settings.size * 0.20)
+                        .offset(x: settings.size * 0.060, y: settings.size * 0.045)
+                        .blur(radius: 1.5)
+                )
+
+            Circle()
+                .fill(actionAccent)
+                .frame(width: settings.size * 0.058, height: settings.size * 0.058)
+                .overlay(Circle().stroke(.white.opacity(0.85), lineWidth: 1))
+                .shadow(color: actionAccent.opacity(0.95), radius: isDragging ? 10 : 6)
+                .scaleEffect(1 + sin(phase * (isDragging ? 1.9 : 0.28)) * 0.10)
+                .offset(y: settings.size * 0.045)
+                .animation(.easeInOut(duration: 1.2), value: runtime.action)
+        }
             .frame(width: settings.size, height: settings.size)
             .id(spriteName)
             .transition(.opacity.combined(with: .scale(scale: 0.985)))
@@ -88,6 +123,7 @@ struct PetView: View {
             .scaleEffect(motion.scale)
             .rotationEffect(.degrees(motion.rotation))
             .offset(x: motion.x, y: motion.y + 34)
+            .gesture(dragGesture)
             .onTapGesture { interact() }
             .contextMenu {
                 ForEach(PetAction.allCases) { item in
@@ -96,16 +132,68 @@ struct PetView: View {
                     }
                 }
             }
-            .help("点击和 Eva 互动；拖动可移动位置")
+            .help("点击和 Eva 互动；拖动时会根据方向奔跑")
             .animation(.easeInOut(duration: 2.2), value: spriteName)
+            .animation(.spring(response: 0.42, dampingFraction: 0.72), value: isDragging)
     }
 
     private var spriteName: String {
         if runtime.action == .sleep { return "eva-glass-v11-sleep" }
-        if runtime.action == .cheer { return "eva-glass-v11-happy" }
+        if runtime.action == .cheer { return "eva-glass-v11" }
         if settings.mood.usesGloomyExpression { return "eva-glass-v11-gloomy" }
         if isBlinking { return "eva-glass-v11-blink" }
         return "eva-glass-v11"
+    }
+
+    private var actionAccent: Color {
+        if isDragging { return Color(red: 0.20, green: 0.95, blue: 1.0) }
+        switch runtime.action {
+        case .idle: return Color(red: 0.10, green: 0.78, blue: 1.0)
+        case .hover: return Color(red: 0.25, green: 0.48, blue: 1.0)
+        case .cheer: return Color(red: 0.18, green: 1.0, blue: 0.72)
+        case .sleep: return Color(red: 0.48, green: 0.38, blue: 1.0)
+        }
+    }
+
+    private var dragGesture: some Gesture {
+        DragGesture(minimumDistance: 2, coordinateSpace: .global)
+            .onChanged { value in
+                guard let hostWindow else { return }
+                if dragStartOrigin == nil {
+                    dragStartOrigin = hostWindow.frame.origin
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { isDragging = true }
+                }
+                guard let dragStartOrigin else { return }
+                hostWindow.setFrameOrigin(NSPoint(
+                    x: dragStartOrigin.x + value.translation.width,
+                    y: dragStartOrigin.y - value.translation.height
+                ))
+                dragDirection = DragDirection(translation: value.translation)
+            }
+            .onEnded { _ in
+                dragStartOrigin = nil
+                withAnimation(.spring(response: 0.48, dampingFraction: 0.68)) {
+                    isDragging = false
+                    dragDirection = .none
+                }
+            }
+    }
+
+    private func dragMotionValues(phase: Double) -> MotionValues {
+        let tilt: Double
+        switch dragDirection {
+        case .left: tilt = -10
+        case .right: tilt = 10
+        case .up: tilt = -3
+        case .down: tilt = 3
+        case .none: tilt = 0
+        }
+        return MotionValues(
+            x: sin(phase * 3.1) * 3.5,
+            y: -8 - abs(sin(phase * 3.1)) * 6,
+            rotation: tilt + sin(phase * 3.1) * 2.2,
+            scale: 1.035 + abs(sin(phase * 3.1)) * 0.025
+        )
     }
 
     private func motionValues(for action: PetAction, phase: Double) -> MotionValues {
@@ -215,13 +303,23 @@ private struct MetricsHUD: View {
         .monospacedDigit()
         .padding(.horizontal, 9)
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .background(Color.black.opacity(settings.metricsBackgroundOpacity), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .background {
+            if settings.metricsBackgroundOpacity > 0.001 {
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .opacity(min(1, settings.metricsBackgroundOpacity * 1.8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .fill(Color.black.opacity(settings.metricsBackgroundOpacity * 0.72))
+                    )
+            }
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 13, style: .continuous)
                 .stroke(LinearGradient(colors: [.white.opacity(0.58), settings.theme.color.opacity(0.30)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .opacity(settings.metricsBackgroundOpacity > 0.001 ? 1 : 0)
         )
-        .shadow(color: settings.theme.color.opacity(0.08), radius: 4, y: 2)
+        .shadow(color: settings.theme.color.opacity(settings.metricsBackgroundOpacity > 0.001 ? 0.08 : 0), radius: 4, y: 2)
         .foregroundStyle(settings.metricTextColor.color.opacity(0.94))
         .allowsHitTesting(false)
     }
@@ -250,6 +348,85 @@ private struct MotionValues {
     let y: CGFloat
     let rotation: Double
     let scale: CGFloat
+}
+
+enum DragDirection: Equatable {
+    case none, left, right, up, down
+
+    init(translation: CGSize) {
+        guard hypot(translation.width, translation.height) > 4 else {
+            self = .none
+            return
+        }
+        if abs(translation.width) > abs(translation.height) {
+            self = translation.width < 0 ? .left : .right
+        } else {
+            self = translation.height < 0 ? .up : .down
+        }
+    }
+}
+
+private struct WindowReader: NSViewRepresentable {
+    let onResolve: (NSWindow?) -> Void
+
+    final class Coordinator {
+        weak var window: NSWindow?
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            context.coordinator.window = view.window
+            onResolve(view.window)
+        }
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        DispatchQueue.main.async {
+            guard context.coordinator.window !== view.window else { return }
+            context.coordinator.window = view.window
+            onResolve(view.window)
+        }
+    }
+}
+
+private struct DragTrail: View {
+    let direction: DragDirection
+    let phase: Double
+    let color: Color
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<3, id: \.self) { index in
+                Capsule()
+                    .fill(LinearGradient(colors: [.clear, color.opacity(0.55 - Double(index) * 0.12)], startPoint: .leading, endPoint: .trailing))
+                    .frame(width: 54 - CGFloat(index) * 10, height: 2)
+                    .offset(x: trailOffset * CGFloat(index + 1), y: CGFloat(index - 1) * 13)
+                    .rotationEffect(trailRotation)
+                    .opacity(0.55 + sin(phase * 3 + Double(index)) * 0.18)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private var trailOffset: CGFloat {
+        switch direction {
+        case .left: return 48
+        case .right: return -48
+        case .up, .down, .none: return -34
+        }
+    }
+
+    private var trailRotation: Angle {
+        switch direction {
+        case .up: return .degrees(90)
+        case .down: return .degrees(-90)
+        default: return .zero
+        }
+    }
 }
 
 private struct GlassLightPool: View {
@@ -294,35 +471,47 @@ private struct ShieldView: View {
     var body: some View {
         switch style {
         case .halo:
-            Circle()
-                .stroke(color.opacity(0.13), lineWidth: 10)
-                .overlay(Circle().stroke(.white.opacity(0.28), lineWidth: 1.2))
-                .scaleEffect(0.965 + sin(phase * 0.20) * 0.012)
+            ZStack {
+                Circle().stroke(color.opacity(0.10), lineWidth: 8).blur(radius: 5)
+                Circle()
+                    .trim(from: 0.03, to: 0.29)
+                    .stroke(color.opacity(0.72), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+                    .rotationEffect(.degrees(phase * 4.2))
+                Circle()
+                    .trim(from: 0.54, to: 0.86)
+                    .stroke(.white.opacity(0.42), style: StrokeStyle(lineWidth: 0.8, dash: [3, 8]))
+                    .rotationEffect(.degrees(-phase * 2.6))
+            }
+            .scaleEffect(0.965 + sin(phase * 0.20) * 0.010)
         case .bubble:
-            Circle()
-                .stroke(
-                    LinearGradient(colors: [.white.opacity(0.52), color.opacity(0.35), .white.opacity(0.10)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    lineWidth: 1.5
-                )
-                .overlay(alignment: .topLeading) {
-                    Capsule()
-                        .fill(.white.opacity(0.18))
-                        .frame(width: 32, height: 2)
-                        .rotationEffect(.degrees(-35))
-                        .offset(x: 38, y: 52)
-                        .blur(radius: 1)
-                }
+            ZStack {
+                Circle()
+                    .stroke(AngularGradient(colors: [color.opacity(0.08), .white.opacity(0.62), color.opacity(0.45), .clear, color.opacity(0.12)], center: .center), lineWidth: 1.2)
+                Circle()
+                    .stroke(color.opacity(0.48), style: StrokeStyle(lineWidth: 1, dash: [1, 8]))
+                    .padding(5)
+                    .rotationEffect(.degrees(phase * 0.8))
+                Circle()
+                    .trim(from: 0.73, to: 0.79)
+                    .stroke(.white.opacity(0.72), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .padding(5)
+                    .rotationEffect(.degrees(phase * 2.2))
+            }
                 .scaleEffect(0.97 + sin(phase * 0.16) * 0.010)
         case .orbit:
             ZStack {
                 Circle()
-                    .trim(from: 0.08, to: 0.44)
-                    .stroke(color.opacity(0.34), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                    .rotationEffect(.degrees(phase * 3.5))
+                    .trim(from: 0.02, to: 0.36)
+                    .stroke(color.opacity(0.62), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                    .rotationEffect(.degrees(phase * 5.0))
                 Circle()
-                    .trim(from: 0.56, to: 0.84)
-                    .stroke(color.opacity(0.20), style: StrokeStyle(lineWidth: 1, lineCap: .round))
-                    .rotationEffect(.degrees(-phase * 2.3))
+                    .trim(from: 0.49, to: 0.79)
+                    .stroke(.white.opacity(0.34), style: StrokeStyle(lineWidth: 0.8, lineCap: .round, dash: [7, 5]))
+                    .rotationEffect(.degrees(-phase * 3.1))
+                Circle()
+                    .trim(from: 0.88, to: 0.94)
+                    .stroke(color.opacity(0.92), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(phase * 7.2))
             }
         }
     }
