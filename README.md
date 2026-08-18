@@ -62,9 +62,9 @@
 
 | 伊娃标准形象 | 应用图标 |
 | --- | --- |
-| <img src="docs/images/eva-mac-2-standard.png" width="280" alt="伊娃白色悬浮机器人标准形象，胸前为单个圆形核心"> | <img src="Sources/EvaDesktopPet/Resources/eva-glass-v11-icon-1024.png" width="280" alt="伊娃桌面宠物简约头部应用图标"> |
+| <img src="docs/images/eva-mac-2-standard.png" width="280" alt="伊娃最终桌面版实际效果，胸前为单个圆形核心"> | <img src="Sources/EvaDesktopPet/Resources/eva-glass-v11-icon-1024.png" width="280" alt="伊娃桌面宠物简约头部应用图标"> |
 
-角色本体统一使用白色机身、黑色面屏和蓝色眼睛；底部光池、防护罩和状态卡片使用同一套透明玻璃语言。菜单栏使用独立的头部单色图标，不显示蓝色应用图标，并会跟随系统外观自动变色。
+左图直接采用 Mac 2.0.1 最终桌面版实际效果：小巧头身比例、横向蓝色眼睛、居中的单个胸部圆环与底部悬浮光。底部光池、防护罩和状态卡片使用同一套透明玻璃语言。菜单栏使用独立的头部单色图标，并会跟随系统外观自动变色。
 
 ## 环境
 
