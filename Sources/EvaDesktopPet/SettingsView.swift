@@ -8,6 +8,8 @@ struct SettingsView: View {
     @EnvironmentObject private var systemMetrics: SystemMetricsMonitor
     @State private var title = ""
     @State private var time = Date()
+    @State private var reminderSchedule = ReminderSchedule.interval
+    @State private var intervalMinutes = 45
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var launchAtLoginError: String?
 
@@ -41,7 +43,7 @@ struct SettingsView: View {
                         Text("伙伴尺寸")
                     } minimumValueLabel: { Text("小") } maximumValueLabel: { Text("大") }
                     Slider(value: $settings.opacity, in: 0.55...1) { Text("透明度") }
-                    Slider(value: $settings.animationSpeed, in: 0.55...1.25, step: 0.05) {
+                    Slider(value: $settings.animationSpeed, in: 0.4...1.0, step: 0.05) {
                         Text("动作节奏")
                     } minimumValueLabel: { Text("舒缓") } maximumValueLabel: { Text("活泼") }
                     Toggle("始终置于其他窗口上方", isOn: $settings.keepOnTop)
@@ -58,14 +60,14 @@ struct SettingsView: View {
             .tabItem { Label("伙伴", systemImage: "face.smiling") }
 
             Form {
-                Section("桌面底座") {
+                Section("玻璃光效") {
                     Slider(value: $settings.baseBrightness, in: 0.1...1, step: 0.05) {
-                        Text("底座亮度")
+                        Text("底部光效亮度")
                     } minimumValueLabel: { Image(systemName: "sun.min") } maximumValueLabel: { Image(systemName: "sun.max.fill") }
-                    Picker("环境色", selection: $settings.theme) {
-                        ForEach(GlowTheme.allCases) { Text($0.title).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
+                    LabeledContent("统一配色", value: "白色 · 黑色 · 电光蓝")
+                    Text("底部不再绘制实体底座，只保留透明玻璃折射和柔和蓝色光池。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("防护罩") {
@@ -77,7 +79,7 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .disabled(!settings.shieldEnabled)
-                    Text("防护罩采用低功耗矢量效果，不会额外加载图片素材。")
+                    Text("防护罩、光池和信息卡片使用统一的透明玻璃风格。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -104,6 +106,21 @@ struct SettingsView: View {
                 }
                 .disabled(!settings.showSystemMonitor)
 
+                Section("玻璃卡片样式") {
+                    Slider(value: $settings.metricsBackgroundOpacity, in: 0.05...0.7, step: 0.05) {
+                        Text("背景深度")
+                    } minimumValueLabel: { Text("通透") } maximumValueLabel: { Text("清晰") }
+                    Picker("字体", selection: $settings.metricFontStyle) {
+                        ForEach(MetricFontStyle.allCases) { style in Text(style.title).tag(style) }
+                    }
+                    .pickerStyle(.segmented)
+                    Picker("文字颜色", selection: $settings.metricTextColor) {
+                        ForEach(MetricTextColor.allCases) { color in Text(color.title).tag(color) }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                .disabled(!settings.showSystemMonitor)
+
                 Section("当前读数") {
                     LabeledContent("CPU 占用率", value: percentage(systemMetrics.snapshot.cpuUsage))
                     LabeledContent("CPU 热状态", value: systemMetrics.snapshot.thermalState)
@@ -118,12 +135,33 @@ struct SettingsView: View {
             .tabItem { Label("性能", systemImage: "gauge.with.dots.needle.67percent") }
 
             VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    TextField("提醒内容，例如：起来走一走", text: $title)
-                    DatePicker("", selection: $time, displayedComponents: .hourAndMinute)
-                        .labelsHidden()
+                HStack(spacing: 10) {
+                    Menu("快捷内容") {
+                        Button("喝水") { title = "喝口水，照顾好自己" }
+                        Button("站起来活动") { title = "起来走一走，放松肩颈" }
+                        Button("查看任务和待办") { title = "看看任务清单，选择下一件小事" }
+                        Button("休息眼睛") { title = "看看远处，让眼睛休息一下" }
+                    }
+                    TextField("提醒内容", text: $title)
                     Button("添加") { addReminder() }
                         .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+
+                HStack {
+                    Picker("提醒方式", selection: $reminderSchedule) {
+                        ForEach(ReminderSchedule.allCases) { schedule in Text(schedule.title).tag(schedule) }
+                    }
+                    .pickerStyle(.segmented)
+                    if reminderSchedule == .daily {
+                        DatePicker("时间", selection: $time, displayedComponents: .hourAndMinute)
+                    } else {
+                        Picker("间隔", selection: $intervalMinutes) {
+                            ForEach([15, 30, 45, 60, 90, 120], id: \.self) { value in
+                                Text("\(value) 分钟").tag(value)
+                            }
+                        }
+                        .frame(width: 160)
+                    }
                 }
 
                 if reminders.authorizationDenied {
@@ -154,7 +192,7 @@ struct SettingsView: View {
                                 .font(.system(size: 28))
                                 .foregroundStyle(.secondary)
                             Text("还没有提醒").font(.headline)
-                            Text("添加一个每日提醒，Eva 会准时通知你。")
+                            Text("可按固定时间，或每隔一段时间温柔提醒你。")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -164,7 +202,7 @@ struct SettingsView: View {
             .padding(20)
             .tabItem { Label("提醒", systemImage: "bell") }
         }
-        .frame(width: 620, height: 470)
+        .frame(width: 660, height: 520)
     }
 
     private func percentage(_ value: Double?) -> String {
@@ -175,8 +213,18 @@ struct SettingsView: View {
         let components = Calendar.current.dateComponents([.hour, .minute], from: time)
         let hour = components.hour ?? 9
         let minute = components.minute ?? 0
-        guard ReminderRules.isValid(title: title, hour: hour, minute: minute) else { return }
-        settings.reminders.append(PetReminder(title: title.trimmingCharacters(in: .whitespacesAndNewlines), hour: hour, minute: minute))
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isValid = reminderSchedule == .daily
+            ? ReminderRules.isValid(title: trimmedTitle, hour: hour, minute: minute)
+            : ReminderRules.isValidInterval(title: trimmedTitle, minutes: intervalMinutes)
+        guard isValid else { return }
+        settings.reminders.append(PetReminder(
+            title: trimmedTitle,
+            hour: hour,
+            minute: minute,
+            schedule: reminderSchedule,
+            intervalMinutes: intervalMinutes
+        ))
         title = ""
         syncReminders()
     }

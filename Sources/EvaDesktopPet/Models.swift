@@ -26,22 +26,14 @@ enum PetAction: String, CaseIterable, Codable, Identifiable {
 }
 
 enum GlowTheme: String, CaseIterable, Codable, Identifiable {
-    case cyan, roseGold, aurora
+    case cyan
 
     var id: String { rawValue }
     var title: String {
-        switch self {
-        case .cyan: "星际青"
-        case .roseGold: "玫瑰金"
-        case .aurora: "极光紫"
-        }
+        "电光蓝"
     }
     var color: Color {
-        switch self {
-        case .cyan: Color(red: 0.14, green: 0.86, blue: 0.96)
-        case .roseGold: Color(red: 0.90, green: 0.56, blue: 0.46)
-        case .aurora: Color(red: 0.55, green: 0.48, blue: 0.96)
-        }
+        Color(red: 0.12, green: 0.76, blue: 1.0)
     }
 }
 
@@ -116,15 +108,92 @@ enum MetricsRefreshInterval: Int, CaseIterable, Codable, Identifiable {
     var title: String { "\(rawValue) 秒" }
 }
 
+enum MetricTextColor: String, CaseIterable, Identifiable {
+    case white, blue, black
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .white: "白色"
+        case .blue: "蓝色"
+        case .black: "黑色"
+        }
+    }
+    var color: Color {
+        switch self {
+        case .white: .white
+        case .blue: GlowTheme.cyan.color
+        case .black: .black
+        }
+    }
+}
+
+enum MetricFontStyle: String, CaseIterable, Identifiable {
+    case rounded, system, monospaced
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .rounded: "圆体"
+        case .system: "系统"
+        case .monospaced: "等宽"
+        }
+    }
+    var design: Font.Design {
+        switch self {
+        case .rounded: .rounded
+        case .system: .default
+        case .monospaced: .monospaced
+        }
+    }
+}
+
+enum ReminderSchedule: String, Codable, CaseIterable, Identifiable {
+    case daily, interval
+
+    var id: String { rawValue }
+    var title: String { self == .daily ? "每天定时" : "间隔重复" }
+}
+
 struct PetReminder: Codable, Identifiable, Equatable {
     var id = UUID()
     var title: String
     var hour: Int
     var minute: Int
     var isEnabled = true
+    var schedule: ReminderSchedule = .daily
+    var intervalMinutes = 60
 
     var timeText: String {
-        String(format: "%02d:%02d", hour, minute)
+        schedule == .daily ? String(format: "%02d:%02d", hour, minute) : "每 \(intervalMinutes) 分钟"
+    }
+
+    init(
+        id: UUID = UUID(), title: String, hour: Int, minute: Int,
+        isEnabled: Bool = true, schedule: ReminderSchedule = .daily, intervalMinutes: Int = 60
+    ) {
+        self.id = id
+        self.title = title
+        self.hour = hour
+        self.minute = minute
+        self.isEnabled = isEnabled
+        self.schedule = schedule
+        self.intervalMinutes = intervalMinutes
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, hour, minute, isEnabled, schedule, intervalMinutes
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        title = try container.decode(String.self, forKey: .title)
+        hour = try container.decodeIfPresent(Int.self, forKey: .hour) ?? 9
+        minute = try container.decodeIfPresent(Int.self, forKey: .minute) ?? 0
+        isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        schedule = try container.decodeIfPresent(ReminderSchedule.self, forKey: .schedule) ?? .daily
+        intervalMinutes = try container.decodeIfPresent(Int.self, forKey: .intervalMinutes) ?? 60
     }
 }
 
@@ -132,6 +201,11 @@ enum ReminderRules {
     static func isValid(title: String, hour: Int, minute: Int) -> Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         (0...23).contains(hour) && (0...59).contains(minute)
+    }
+
+
+    static func isValidInterval(title: String, minutes: Int) -> Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && minutes >= 15
     }
 }
 

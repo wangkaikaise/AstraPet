@@ -19,6 +19,22 @@ final class ReminderRulesTests: XCTestCase {
         XCTAssertEqual(PetReminder(title: "站起来", hour: 7, minute: 5).timeText, "07:05")
     }
 
+    func testIntervalReminderPresentationAndValidation() {
+        let reminder = PetReminder(
+            title: "喝水", hour: 9, minute: 0, schedule: .interval, intervalMinutes: 45
+        )
+        XCTAssertEqual(reminder.timeText, "每 45 分钟")
+        XCTAssertTrue(ReminderRules.isValidInterval(title: "喝水", minutes: 15))
+        XCTAssertFalse(ReminderRules.isValidInterval(title: "喝水", minutes: 10))
+    }
+
+    func testOlderReminderJSONMigratesToDailySchedule() throws {
+        let json = #"{"id":"D9525624-BC24-4C38-B279-22802234C329","title":"休息","hour":10,"minute":5,"isEnabled":true}"#.data(using: .utf8)!
+        let reminder = try JSONDecoder().decode(PetReminder.self, from: json)
+        XCTAssertEqual(reminder.schedule, .daily)
+        XCTAssertEqual(reminder.timeText, "10:05")
+    }
+
     func testEveryPetActionHasPresentationMetadata() {
         XCTAssertEqual(PetAction.allCases.count, 4)
         XCTAssertTrue(PetAction.allCases.allSatisfy { !$0.title.isEmpty && !$0.symbol.isEmpty })
