@@ -36,8 +36,9 @@ final class ReminderRulesTests: XCTestCase {
     }
 
     func testEveryPetActionHasPresentationMetadata() {
-        XCTAssertEqual(PetAction.allCases.count, 4)
+        XCTAssertEqual(PetAction.allCases.count, 5)
         XCTAssertTrue(PetAction.allCases.allSatisfy { !$0.title.isEmpty && !$0.symbol.isEmpty })
+        XCTAssertTrue(PetAction.allCases.contains(.play))
     }
 
     func testMoodCycleReturnsToBeginning() {
@@ -65,5 +66,15 @@ final class ReminderRulesTests: XCTestCase {
         XCTAssertEqual(DragDirection(translation: CGSize(width: 4, height: -30)), .up)
         XCTAssertEqual(DragDirection(translation: CGSize(width: 4, height: 30)), .down)
         XCTAssertEqual(DragDirection(translation: CGSize(width: 2, height: 2)), .none)
+    }
+
+    func testMotionSystemKeepsCoreCenteredAndCruiseDistinct() {
+        XCTAssertEqual(PetMotionSpec.chestCoreNormalizedX, 0)
+        XCTAssertEqual(PetMotionSpec.chestCoreNormalizedY, 0.045, accuracy: 0.0001)
+        XCTAssertGreaterThan(
+            PetMotionSpec.hoverHorizontalTravel,
+            PetMotionSpec.idleHorizontalTravel * 5
+        )
+        XCTAssertEqual(PetMotionSpec.dragFrameNanoseconds, 16_666_667)
     }
 }
