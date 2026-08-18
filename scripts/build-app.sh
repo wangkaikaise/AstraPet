@@ -15,8 +15,8 @@ rm -rf "$APP_DIR"
 mkdir -p "$CONTENTS_DIR/MacOS" "$CONTENTS_DIR/Resources"
 cp "$BUILD_DIR/AstraPet" "$CONTENTS_DIR/MacOS/AstraPet"
 cp "$ROOT_DIR/support/Info.plist" "$CONTENTS_DIR/Info.plist"
-cp "$ROOT_DIR/support/AppIcon.icns" "$CONTENTS_DIR/Resources/AppIcon.icns"
-for resource in robot.png robot-blink.png robot-cheer.png robot-sleep.png; do
+cp "$ROOT_DIR/support/AppIconWarm.icns" "$CONTENTS_DIR/Resources/AppIconWarm.icns"
+for resource in robot-warm.png robot-warm-blink.png robot-warm-happy.png robot-warm-gloomy.png robot-warm-sleep.png; do
   cp "$ROOT_DIR/Sources/AstraPet/Resources/$resource" "$CONTENTS_DIR/Resources/$resource"
 done
 

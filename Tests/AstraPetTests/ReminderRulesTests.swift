@@ -23,4 +23,19 @@ final class ReminderRulesTests: XCTestCase {
         XCTAssertEqual(PetAction.allCases.count, 4)
         XCTAssertTrue(PetAction.allCases.allSatisfy { !$0.title.isEmpty && !$0.symbol.isEmpty })
     }
+
+    func testMoodCycleReturnsToBeginning() {
+        var mood = PetMood.cheerful
+        for _ in PetMood.allCases { mood = mood.next }
+        XCTAssertEqual(mood, .cheerful)
+    }
+
+    func testThirtyMinuteMoodInterval() {
+        XCTAssertEqual(MoodInterval.thirtyMinutes.rawValue, 30 * 60)
+    }
+
+    func testShieldStylesHavePresentationTitles() {
+        XCTAssertEqual(ShieldStyle.allCases.count, 3)
+        XCTAssertTrue(ShieldStyle.allCases.allSatisfy { !$0.title.isEmpty })
+    }
 }
