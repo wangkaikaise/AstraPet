@@ -137,35 +137,45 @@ enum StatusBarIcon {
     static let size = NSSize(width: 18, height: 18)
 
     static func makeEvaAvatar() -> NSImage {
-        let image = NSImage(size: size, flipped: false) { rect in
+        let image = NSImage(size: size, flipped: false) { _ in
             NSGraphicsContext.saveGraphicsState()
             defer { NSGraphicsContext.restoreGraphicsState() }
 
             NSColor.black.setStroke()
             NSColor.black.setFill()
 
-            // Eva's simple floating head shell.
-            let shell = NSBezierPath(roundedRect: NSRect(x: 1.7, y: 3.8, width: 14.6, height: 10.6), xRadius: 5.3, yRadius: 5.3)
-            shell.lineWidth = 1.45
+            // Keep the mark head-only and readable at native menu-bar size.
+            let shell = NSBezierPath(
+                roundedRect: NSRect(x: 1.25, y: 3.15, width: 15.5, height: 11.7),
+                xRadius: 5.85,
+                yRadius: 5.85
+            )
+            shell.lineWidth = 1.35
             shell.lineCapStyle = .round
             shell.stroke()
 
-            // Dark face window, expressed as a clean template outline.
-            let face = NSBezierPath(roundedRect: NSRect(x: 3.7, y: 6.0, width: 10.6, height: 6.1), xRadius: 3.05, yRadius: 3.05)
-            face.lineWidth = 1.15
-            face.stroke()
+            // A single solid visor gives the icon a stronger silhouette than the
+            // previous multi-line drawing. The eyes are punched out of the mask.
+            let visor = NSBezierPath(
+                roundedRect: NSRect(x: 3.15, y: 5.25, width: 11.7, height: 7.25),
+                xRadius: 3.6,
+                yRadius: 3.6
+            )
+            visor.fill()
 
-            // Eva's two characteristic blue eyes become the current system tint.
-            NSBezierPath(ovalIn: NSRect(x: 5.5, y: 8.1, width: 2.25, height: 1.35)).fill()
-            NSBezierPath(ovalIn: NSRect(x: 10.25, y: 8.1, width: 2.25, height: 1.35)).fill()
-
-            // A tiny floating-body cue keeps the mark readable as an avatar.
-            let body = NSBezierPath()
-            body.move(to: NSPoint(x: 6.0, y: 2.65))
-            body.curve(to: NSPoint(x: 12.0, y: 2.65), controlPoint1: NSPoint(x: 7.1, y: 1.55), controlPoint2: NSPoint(x: 10.9, y: 1.55))
-            body.lineWidth = 1.25
-            body.lineCapStyle = .round
-            body.stroke()
+            NSGraphicsContext.current?.compositingOperation = .destinationOut
+            for centerX in [6.15, 11.85] {
+                let eye = NSBezierPath()
+                eye.move(to: NSPoint(x: centerX - 1.25, y: 8.35))
+                eye.curve(
+                    to: NSPoint(x: centerX + 1.25, y: 8.35),
+                    controlPoint1: NSPoint(x: centerX - 0.82, y: 9.55),
+                    controlPoint2: NSPoint(x: centerX + 0.82, y: 9.55)
+                )
+                eye.lineWidth = 1.25
+                eye.lineCapStyle = .round
+                eye.stroke()
+            }
 
             return true
         }
