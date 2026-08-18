@@ -83,12 +83,22 @@ struct PetView: View {
             }
             .offset(y: settings.showSystemMonitor && settings.metricsPosition == .top ? PetLayoutSpec.topMetricsPetOffset : 0)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .overlay(alignment: settings.metricsPosition.alignment) {
+            .overlay {
                 if settings.showSystemMonitor {
-                    MetricsHUD(snapshot: systemMetrics.snapshot)
-                        .opacity(settings.metricsContentOpacity)
-                        .padding(PetLayoutSpec.metricsPadding)
-                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    GeometryReader { geometry in
+                        MetricsHUD(snapshot: systemMetrics.snapshot)
+                            .fixedSize()
+                            .opacity(settings.metricsContentOpacity)
+                            .position(
+                                PetLayoutSpec.metricsCenter(
+                                    for: settings.metricsPosition,
+                                    petSize: settings.size,
+                                    containerSize: geometry.size
+                                )
+                            )
+                            .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                            .animation(.easeInOut(duration: 0.55), value: settings.metricsPosition)
+                    }
                 }
             }
         }
@@ -331,12 +341,14 @@ struct PetView: View {
 
     private func interact() {
         tapCount += 1
-        runtime.action = .play
+        let selectedAction = PetAction.interactionCandidates(excluding: runtime.action).randomElement() ?? .cheer
+        runtime.action = selectedAction
         let messages = messagesForCurrentMood
         show(messages[tapCount % messages.count])
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 12_000_000_000)
-            if runtime.action == .play { runtime.action = .idle }
+            let duration: UInt64 = selectedAction == .sleep ? 16 : 12
+            try? await Task.sleep(nanoseconds: duration * 1_000_000_000)
+            if runtime.action == selectedAction { runtime.action = .idle }
         }
     }
 

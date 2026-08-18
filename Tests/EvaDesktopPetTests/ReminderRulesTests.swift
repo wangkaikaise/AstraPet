@@ -41,6 +41,15 @@ final class ReminderRulesTests: XCTestCase {
         XCTAssertTrue(PetAction.allCases.contains(.play))
     }
 
+    func testClickInteractionCanChooseEveryOtherAction() {
+        for current in PetAction.allCases {
+            let candidates = PetAction.interactionCandidates(excluding: current)
+            XCTAssertEqual(candidates.count, PetAction.allCases.count - 1)
+            XCTAssertFalse(candidates.contains(current))
+            XCTAssertEqual(Set(candidates), Set(PetAction.allCases).subtracting([current]))
+        }
+    }
+
     func testMoodCycleReturnsToBeginning() {
         var mood = PetMood.cheerful
         for _ in PetMood.allCases { mood = mood.next }
@@ -81,6 +90,25 @@ final class ReminderRulesTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(PetLayoutSpec.panelExtraWidth, 300)
         XCTAssertGreaterThanOrEqual(PetLayoutSpec.panelExtraHeight, 220)
         XCTAssertGreaterThanOrEqual(PetLayoutSpec.topMetricsPetOffset, 80)
+    }
+
+    func testMetricsAnchorsAreSymmetricAndClearOfPet() {
+        let petSize: CGFloat = 220
+        let container = CGSize(
+            width: petSize + PetLayoutSpec.panelExtraWidth,
+            height: petSize + PetLayoutSpec.panelExtraHeight
+        )
+        let top = PetLayoutSpec.metricsCenter(for: .top, petSize: petSize, containerSize: container)
+        let bottom = PetLayoutSpec.metricsCenter(for: .bottom, petSize: petSize, containerSize: container)
+        let left = PetLayoutSpec.metricsCenter(for: .left, petSize: petSize, containerSize: container)
+        let right = PetLayoutSpec.metricsCenter(for: .right, petSize: petSize, containerSize: container)
+
+        XCTAssertEqual(top.x, container.width / 2)
+        XCTAssertEqual(bottom.x, container.width / 2)
+        XCTAssertEqual(left.x, container.width - right.x)
+        XCTAssertEqual(left.y, right.y)
+        XCTAssertLessThan(top.y + PetLayoutSpec.metricsHUDHeight / 2, PetLayoutSpec.topMetricsPetOffset)
+        XCTAssertGreaterThan(bottom.y - PetLayoutSpec.metricsHUDHeight / 2, petSize + 90)
     }
 
     @MainActor
