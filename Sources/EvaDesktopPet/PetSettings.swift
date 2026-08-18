@@ -23,6 +23,8 @@ final class PetSettings: ObservableObject {
         static let showGPUTemperature = "monitor.gpuTemperature"
         static let metricsRefreshInterval = "monitor.refreshInterval"
         static let metricsBackgroundOpacity = "monitor.backgroundOpacity"
+        static let metricsContentOpacity = "monitor.contentOpacity"
+        static let metricsPosition = "monitor.position"
         static let metricTextColor = "monitor.textColor"
         static let metricFontStyle = "monitor.fontStyle"
     }
@@ -45,6 +47,8 @@ final class PetSettings: ObservableObject {
     @Published var showGPUTemperature: Bool { didSet { save(showGPUTemperature, for: Key.showGPUTemperature) } }
     @Published var metricsRefreshInterval: MetricsRefreshInterval { didSet { save(metricsRefreshInterval.rawValue, for: Key.metricsRefreshInterval) } }
     @Published var metricsBackgroundOpacity: Double { didSet { save(metricsBackgroundOpacity, for: Key.metricsBackgroundOpacity) } }
+    @Published var metricsContentOpacity: Double { didSet { save(metricsContentOpacity, for: Key.metricsContentOpacity) } }
+    @Published var metricsPosition: MetricsPosition { didSet { save(metricsPosition.rawValue, for: Key.metricsPosition) } }
     @Published var metricTextColor: MetricTextColor { didSet { save(metricTextColor.rawValue, for: Key.metricTextColor) } }
     @Published var metricFontStyle: MetricFontStyle { didSet { save(metricFontStyle.rawValue, for: Key.metricFontStyle) } }
     @Published var reminders: [PetReminder] { didSet { saveReminders() } }
@@ -73,6 +77,8 @@ final class PetSettings: ObservableObject {
         let storedRefreshInterval = defaults.integer(forKey: Key.metricsRefreshInterval)
         metricsRefreshInterval = MetricsRefreshInterval(rawValue: storedRefreshInterval) ?? .fiveSeconds
         metricsBackgroundOpacity = defaults.object(forKey: Key.metricsBackgroundOpacity) as? Double ?? 0.28
+        metricsContentOpacity = defaults.object(forKey: Key.metricsContentOpacity) as? Double ?? 1
+        metricsPosition = MetricsPosition(rawValue: defaults.string(forKey: Key.metricsPosition) ?? "right") ?? .right
         metricTextColor = MetricTextColor(rawValue: defaults.string(forKey: Key.metricTextColor) ?? "white") ?? .white
         metricFontStyle = MetricFontStyle(rawValue: defaults.string(forKey: Key.metricFontStyle) ?? "rounded") ?? .rounded
         if let data = defaults.data(forKey: Key.reminders),

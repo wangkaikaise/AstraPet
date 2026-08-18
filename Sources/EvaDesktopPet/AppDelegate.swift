@@ -41,7 +41,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
-        panel.isMovableByWindowBackground = true
+        // PetView owns dragging so AppKit and SwiftUI never compete to move the panel.
+        panel.isMovableByWindowBackground = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.level = settings.keepOnTop ? .floating : .normal
         panel.hidesOnDeactivate = false
@@ -74,14 +75,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func createStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(systemSymbolName: "sparkles", accessibilityDescription: "Eva Desktop Pet")
+        item.button?.image = NSImage(systemSymbolName: "sparkles", accessibilityDescription: "伊娃桌面宠物")
         item.menu = buildMenu()
         statusItem = item
     }
 
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(withTitle: "显示 / 隐藏 Eva", action: #selector(togglePet), keyEquivalent: "h").target = self
+        menu.addItem(withTitle: "显示 / 隐藏伊娃", action: #selector(togglePet), keyEquivalent: "h").target = self
         let actions = NSMenuItem(title: "动作", action: nil, keyEquivalent: "")
         let actionMenu = NSMenu()
         for item in PetAction.allCases {
@@ -95,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "设置…", action: #selector(openSettings), keyEquivalent: ",").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "退出 Eva Desktop Pet", action: #selector(quit), keyEquivalent: "q").target = self
+        menu.addItem(withTitle: "退出伊娃桌面宠物", action: #selector(quit), keyEquivalent: "q").target = self
         return menu
     }
 
@@ -117,7 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .environmentObject(runtime)
                 .environmentObject(systemMetrics)
             let window = NSWindow(contentViewController: NSHostingController(rootView: view))
-            window.title = "Eva Desktop Pet 设置"
+            window.title = "伊娃桌面宠物设置"
             window.styleMask = [.titled, .closable, .miniaturizable]
             window.center()
             window.isReleasedWhenClosed = false

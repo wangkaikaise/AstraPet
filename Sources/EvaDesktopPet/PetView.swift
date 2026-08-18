@@ -10,13 +10,12 @@ struct PetView: View {
     @State private var hostWindow: NSWindow?
     @State private var dragStartOrigin: CGPoint?
     @State private var dragStartMouseLocation: CGPoint?
-    @State private var dragTargetOrigin: CGPoint?
-    @State private var dragSmoothingTask: Task<Void, Never>?
+    @State private var lastDragMouseLocation: CGPoint?
     @State private var dragDirection = DragDirection.none
     @State private var isDragging = false
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
+        TimelineView(.animation(minimumInterval: animationFrameInterval)) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
                 .truncatingRemainder(dividingBy: 240)
             let phase = time * settings.animationSpeed
@@ -76,12 +75,13 @@ struct PetView: View {
                         .offset(y: settings.showSystemMonitor ? settings.size + 8 : 2)
                 }
             }
+            .offset(y: settings.showSystemMonitor && settings.metricsPosition == .top ? PetLayoutSpec.topMetricsPetOffset : 0)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .overlay(alignment: .topTrailing) {
+            .overlay(alignment: settings.metricsPosition.alignment) {
                 if settings.showSystemMonitor {
                     MetricsHUD(snapshot: systemMetrics.snapshot)
-                        .padding(.top, 8)
-                        .padding(.trailing, PetLayoutSpec.metricsTrailingPadding)
+                        .opacity(settings.metricsContentOpacity)
+                        .padding(PetLayoutSpec.metricsPadding)
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 }
             }
@@ -91,7 +91,6 @@ struct PetView: View {
             height: settings.size + PetLayoutSpec.panelExtraHeight
         )
         .background(WindowReader { hostWindow = $0 })
-        .contentShape(Rectangle())
         .task(id: "\(settings.autoMood)-\(settings.moodInterval.rawValue)") { await moodLoop() }
         .task(id: "\(settings.showSystemMonitor)-\(settings.metricsRefreshInterval.rawValue)") {
             guard settings.showSystemMonitor else {
@@ -108,10 +107,18 @@ struct PetView: View {
         }
         .animation(.easeInOut(duration: 2.0), value: settings.shieldEnabled)
         .animation(.easeInOut(duration: 1.8), value: runtime.action)
-        .onDisappear { dragSmoothingTask?.cancel() }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("桌面伙伴 Eva，当前动作：\(runtime.action.title)，情绪：\(settings.mood.title)")
+        .accessibilityLabel("桌面伙伴伊娃，当前动作：\(runtime.action.title)，情绪：\(settings.mood.title)")
         .accessibilityAddTraits(.isButton)
+    }
+
+    private var animationFrameInterval: TimeInterval {
+        // Keep calm states economical while reserving 30 FPS for visible movement
+        // and direct manipulation, where additional frames are perceptible.
+        if isDragging || runtime.action == .hover || runtime.action == .cheer || runtime.action == .play {
+            return 1.0 / 30.0
+        }
+        return 1.0 / 20.0
     }
 
     private func robot(phase: Double) -> some View {
@@ -170,7 +177,7 @@ struct PetView: View {
                     }
                 }
             }
-            .help("点击和 Eva 互动；拖动时会根据方向奔跑")
+            .help("点击和伊娃互动；拖动时会根据方向奔跑")
             .animation(.easeInOut(duration: 1.8), value: runtime.action)
             .animation(.spring(response: 0.42, dampingFraction: 0.72), value: isDragging)
     }
@@ -191,31 +198,42 @@ struct PetView: View {
     }
 
     private var dragGesture: some Gesture {
-        DragGesture(minimumDistance: 2, coordinateSpace: .global)
+        DragGesture(minimumDistance: 1, coordinateSpace: .global)
             .onChanged { _ in
                 guard let hostWindow else { return }
                 if dragStartOrigin == nil {
                     dragStartOrigin = hostWindow.frame.origin
                     dragStartMouseLocation = NSEvent.mouseLocation
-                    dragTargetOrigin = hostWindow.frame.origin
-                    startDragSmoothing()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { isDragging = true }
+                    lastDragMouseLocation = NSEvent.mouseLocation
+                    isDragging = true
                 }
                 guard let dragStartOrigin, let dragStartMouseLocation else { return }
-                let mouse = NSEvent.mouseLocation
+                let mouseLocation = NSEvent.mouseLocation
                 let delta = CGSize(
-                    width: mouse.x - dragStartMouseLocation.x,
-                    height: mouse.y - dragStartMouseLocation.y
+                    width: mouseLocation.x - dragStartMouseLocation.x,
+                    height: mouseLocation.y - dragStartMouseLocation.y
                 )
-                dragTargetOrigin = CGPoint(
+
+                // Keep the AppKit window locked to the pointer. The old smoothing
+                // loop followed only a fraction of every delta and caused visible lag.
+                hostWindow.setFrameOrigin(NSPoint(
                     x: dragStartOrigin.x + delta.width,
                     y: dragStartOrigin.y + delta.height
-                )
-                dragDirection = DragDirection(translation: CGSize(width: delta.width, height: -delta.height))
+                ))
+                let previousMouseLocation = lastDragMouseLocation ?? mouseLocation
+                let nextDirection = DragDirection(translation: CGSize(
+                    width: mouseLocation.x - previousMouseLocation.x,
+                    height: previousMouseLocation.y - mouseLocation.y
+                ))
+                if nextDirection != dragDirection {
+                    dragDirection = nextDirection
+                }
+                lastDragMouseLocation = mouseLocation
             }
             .onEnded { _ in
                 dragStartOrigin = nil
                 dragStartMouseLocation = nil
+                lastDragMouseLocation = nil
                 withAnimation(.spring(response: 0.48, dampingFraction: 0.68)) {
                     isDragging = false
                 }
@@ -225,29 +243,6 @@ struct PetView: View {
                     withAnimation(.easeOut(duration: 0.3)) { dragDirection = .none }
                 }
             }
-    }
-
-    private func startDragSmoothing() {
-        dragSmoothingTask?.cancel()
-        dragSmoothingTask = Task { @MainActor in
-            while !Task.isCancelled {
-                guard let hostWindow, let target = dragTargetOrigin else { return }
-                let current = hostWindow.frame.origin
-                let dx = target.x - current.x
-                let dy = target.y - current.y
-                let distance = hypot(dx, dy)
-                if !isDragging && distance < 0.6 {
-                    hostWindow.setFrameOrigin(target)
-                    return
-                }
-                let response: CGFloat = isDragging ? 0.16 : 0.24
-                hostWindow.setFrameOrigin(NSPoint(
-                    x: current.x + dx * response,
-                    y: current.y + dy * response
-                ))
-                try? await Task.sleep(nanoseconds: PetMotionSpec.dragFrameNanoseconds)
-            }
-        }
     }
 
     private func dragMotionValues(phase: Double) -> MotionValues {
@@ -260,10 +255,10 @@ struct PetView: View {
         case .none: tilt = 0
         }
         return MotionValues(
-            x: sin(phase * 1.8) * 2.4,
-            y: -7 - abs(sin(phase * 1.8)) * 4,
-            rotation: tilt + sin(phase * 1.8) * 1.4,
-            scale: 1.025 + abs(sin(phase * 1.8)) * 0.018
+            x: sin(phase * 2.0) * 4.5,
+            y: -10 - abs(sin(phase * 2.0)) * 8,
+            rotation: tilt + sin(phase * 2.0) * 2.4,
+            scale: 1.035 + abs(sin(phase * 2.0)) * 0.028
         )
     }
 
@@ -272,37 +267,37 @@ struct PetView: View {
         case .idle:
             return MotionValues(
                 x: sin(phase * 0.13) * PetMotionSpec.idleHorizontalTravel,
-                y: sin(phase * 0.20) * 4.2,
-                rotation: sin(phase * 0.11) * 1.1,
-                scale: 1 + sin(phase * 0.16) * 0.009
+                y: sin(phase * 0.20) * 8,
+                rotation: sin(phase * 0.11) * 2.2,
+                scale: 1 + sin(phase * 0.16) * 0.018
             )
         case .hover:
             return MotionValues(
                 x: sin(phase * 0.16) * PetMotionSpec.hoverHorizontalTravel,
-                y: -5 + sin(phase * 0.24) * 7.5,
-                rotation: 3.2 + sin(phase * 0.14) * 2.3,
-                scale: 1.015 + sin(phase * 0.18) * 0.012
+                y: -12 + sin(phase * 0.24) * 14,
+                rotation: cos(phase * 0.16) * 6.5,
+                scale: 1.025 + sin(phase * 0.18) * 0.022
             )
         case .cheer:
             return MotionValues(
-                x: sin(phase * 0.25) * 2.8,
-                y: -5 + sin(phase * 0.23) * 5,
-                rotation: sin(phase * 0.21) * 2.5,
-                scale: 1.025 + sin(phase * 0.20) * 0.014
+                x: sin(phase * 0.34) * 8,
+                y: -8 - abs(sin(phase * 0.43)) * 19,
+                rotation: sin(phase * 0.34) * 7,
+                scale: 1.035 + abs(sin(phase * 0.43)) * 0.032
             )
         case .play:
             return MotionValues(
-                x: sin(phase * 0.48) * 7,
-                y: -7 - abs(sin(phase * 0.62)) * 8,
-                rotation: sin(phase * 0.54) * 6,
-                scale: 1.025 + abs(sin(phase * 0.62)) * 0.030
+                x: sin(phase * 0.48) * 18,
+                y: -12 - abs(sin(phase * 0.62)) * 24,
+                rotation: sin(phase * 0.54) * 12,
+                scale: 1.04 + abs(sin(phase * 0.62)) * 0.050
             )
         case .sleep:
             return MotionValues(
                 x: 0,
-                y: 5 + sin(phase * 0.10) * 2,
-                rotation: -1.5 + sin(phase * 0.08) * 0.6,
-                scale: 0.98 + sin(phase * 0.09) * 0.006
+                y: 9 + sin(phase * 0.10) * 4,
+                rotation: -3 + sin(phase * 0.08) * 1.2,
+                scale: 0.97 + sin(phase * 0.09) * 0.012
             )
         }
     }
