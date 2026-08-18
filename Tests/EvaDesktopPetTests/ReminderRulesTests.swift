@@ -41,6 +41,15 @@ final class ReminderRulesTests: XCTestCase {
         XCTAssertTrue(PetAction.allCases.contains(.play))
     }
 
+    func testClickInteractionCanChooseEveryOtherAction() {
+        for current in PetAction.allCases {
+            let candidates = PetAction.interactionCandidates(excluding: current)
+            XCTAssertEqual(candidates.count, PetAction.allCases.count - 1)
+            XCTAssertFalse(candidates.contains(current))
+            XCTAssertEqual(Set(candidates), Set(PetAction.allCases).subtracting([current]))
+        }
+    }
+
     func testMoodCycleReturnsToBeginning() {
         var mood = PetMood.cheerful
         for _ in PetMood.allCases { mood = mood.next }
@@ -68,6 +77,30 @@ final class ReminderRulesTests: XCTestCase {
         XCTAssertEqual(DragDirection(translation: CGSize(width: 2, height: 2)), .none)
     }
 
+    func testRocketRotationAndWakeFollowDragDirection() {
+        XCTAssertEqual(DragDirection.up.rocketRotation, 0)
+        XCTAssertEqual(DragDirection.right.rocketRotation, 90)
+        XCTAssertEqual(DragDirection.down.rocketRotation, 180)
+        XCTAssertEqual(DragDirection.left.rocketRotation, -90)
+        XCTAssertEqual(DragDirection.right.unitVector.dx, 1)
+        XCTAssertEqual(DragDirection.right.unitVector.dy, 0)
+        XCTAssertEqual(DragDirection.down.unitVector.dx, 0)
+        XCTAssertEqual(DragDirection.down.unitVector.dy, 1)
+    }
+
+    func testPetInteractionLayerRemainsHitTestable() {
+        XCTAssertGreaterThan(PetInteractionSpec.hitLayerOpacity, 0)
+        XCTAssertLessThanOrEqual(PetInteractionSpec.hitLayerOpacity, 0.001)
+    }
+
+    @MainActor
+    func testStatusBarAvatarUsesSystemTemplateTint() {
+        let image = StatusBarIcon.makeEvaAvatar()
+        XCTAssertTrue(image.isTemplate)
+        XCTAssertEqual(image.size, NSSize(width: 18, height: 18))
+        XCTAssertEqual(image.accessibilityDescription, "伊娃桌面宠物")
+    }
+
     func testMotionSystemKeepsCoreCenteredAndCruiseDistinct() {
         XCTAssertEqual(PetMotionSpec.chestCoreNormalizedX, 0)
         XCTAssertEqual(PetMotionSpec.chestCoreNormalizedY, 0.045, accuracy: 0.0001)
@@ -81,6 +114,25 @@ final class ReminderRulesTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(PetLayoutSpec.panelExtraWidth, 300)
         XCTAssertGreaterThanOrEqual(PetLayoutSpec.panelExtraHeight, 220)
         XCTAssertGreaterThanOrEqual(PetLayoutSpec.topMetricsPetOffset, 80)
+    }
+
+    func testMetricsAnchorsAreSymmetricAndClearOfPet() {
+        let petSize: CGFloat = 220
+        let container = CGSize(
+            width: petSize + PetLayoutSpec.panelExtraWidth,
+            height: petSize + PetLayoutSpec.panelExtraHeight
+        )
+        let top = PetLayoutSpec.metricsCenter(for: .top, petSize: petSize, containerSize: container)
+        let bottom = PetLayoutSpec.metricsCenter(for: .bottom, petSize: petSize, containerSize: container)
+        let left = PetLayoutSpec.metricsCenter(for: .left, petSize: petSize, containerSize: container)
+        let right = PetLayoutSpec.metricsCenter(for: .right, petSize: petSize, containerSize: container)
+
+        XCTAssertEqual(top.x, container.width / 2)
+        XCTAssertEqual(bottom.x, container.width / 2)
+        XCTAssertEqual(left.x, container.width - right.x)
+        XCTAssertEqual(left.y, right.y)
+        XCTAssertLessThan(top.y + PetLayoutSpec.metricsHUDHeight / 2, PetLayoutSpec.topMetricsPetOffset)
+        XCTAssertGreaterThan(bottom.y - PetLayoutSpec.metricsHUDHeight / 2, petSize + 90)
     }
 
     @MainActor

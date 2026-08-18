@@ -25,6 +25,10 @@ enum PetAction: String, CaseIterable, Codable, Identifiable {
         case .sleep: "moon.zzz.fill"
         }
     }
+
+    static func interactionCandidates(excluding current: PetAction) -> [PetAction] {
+        allCases.filter { $0 != current }
+    }
 }
 
 enum PetMotionSpec {
@@ -34,11 +38,39 @@ enum PetMotionSpec {
     static let hoverHorizontalTravel: CGFloat = 32
 }
 
+enum PetInteractionSpec {
+    // Non-zero alpha prevents transparent NSPanel hit testing from passing
+    // pointer events through the visible rocket on macOS.
+    static let hitLayerOpacity = 0.001
+}
+
 enum PetLayoutSpec {
     static let panelExtraWidth: CGFloat = 300
     static let panelExtraHeight: CGFloat = 220
-    static let metricsPadding: CGFloat = 10
-    static let topMetricsPetOffset: CGFloat = 88
+    static let metricsHUDWidth: CGFloat = 130
+    static let metricsHUDHeight: CGFloat = 82
+    static let topMetricsPetOffset: CGFloat = 96
+
+    static func metricsCenter(
+        for position: MetricsPosition,
+        petSize: CGFloat,
+        containerSize: CGSize
+    ) -> CGPoint {
+        let horizontalCenter = containerSize.width / 2
+        let sideCenter = panelExtraWidth / 4
+        let sideVerticalCenter = 34 + petSize * 0.30
+
+        switch position {
+        case .top:
+            return CGPoint(x: horizontalCenter, y: metricsHUDHeight / 2 + 8)
+        case .bottom:
+            return CGPoint(x: horizontalCenter, y: petSize + 142)
+        case .left:
+            return CGPoint(x: sideCenter, y: sideVerticalCenter)
+        case .right:
+            return CGPoint(x: containerSize.width - sideCenter, y: sideVerticalCenter)
+        }
+    }
 }
 
 enum GlowTheme: String, CaseIterable, Codable, Identifiable {
@@ -146,14 +178,6 @@ enum MetricsPosition: String, CaseIterable, Identifiable {
         }
     }
 
-    var alignment: Alignment {
-        switch self {
-        case .top: .top
-        case .bottom: .bottom
-        case .left: .topLeading
-        case .right: .topTrailing
-        }
-    }
 }
 
 enum MetricTextColor: String, CaseIterable, Identifiable {
