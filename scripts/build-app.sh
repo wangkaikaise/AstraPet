@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="${0:A:h:h}"
 CONFIGURATION="${1:-release}"
 BUILD_DIR="$ROOT_DIR/.build/$CONFIGURATION"
-APP_DIR="$ROOT_DIR/dist/AstraPet.app"
+APP_DIR="$ROOT_DIR/dist/Eva Desktop Pet.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 
 cd "$ROOT_DIR"
@@ -13,11 +13,11 @@ BUILD_DIR="${BUILD_DIR:A}"
 
 rm -rf "$APP_DIR"
 mkdir -p "$CONTENTS_DIR/MacOS" "$CONTENTS_DIR/Resources"
-cp "$BUILD_DIR/AstraPet" "$CONTENTS_DIR/MacOS/AstraPet"
+cp "$BUILD_DIR/EvaDesktopPet" "$CONTENTS_DIR/MacOS/EvaDesktopPet"
 cp "$ROOT_DIR/support/Info.plist" "$CONTENTS_DIR/Info.plist"
-cp "$ROOT_DIR/support/AppIconWarm.icns" "$CONTENTS_DIR/Resources/AppIconWarm.icns"
-for resource in robot-warm.png robot-warm-blink.png robot-warm-happy.png robot-warm-gloomy.png robot-warm-sleep.png; do
-  cp "$ROOT_DIR/Sources/AstraPet/Resources/$resource" "$CONTENTS_DIR/Resources/$resource"
+cp "$ROOT_DIR/support/EvaDesktopPet.icns" "$CONTENTS_DIR/Resources/EvaDesktopPet.icns"
+for resource in eva-original.png eva-original-blink.png eva-original-happy.png eva-original-gloomy.png eva-original-sleep.png; do
+  cp "$ROOT_DIR/Sources/EvaDesktopPet/Resources/$resource" "$CONTENTS_DIR/Resources/$resource"
 done
 
 codesign --force --deep --sign - "$APP_DIR"

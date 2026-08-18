@@ -26,21 +26,21 @@ enum PetAction: String, CaseIterable, Codable, Identifiable {
 }
 
 enum GlowTheme: String, CaseIterable, Codable, Identifiable {
-    case amber, blush, sage
+    case cyan, roseGold, aurora
 
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .amber: "烛光琥珀"
-        case .blush: "晚霞粉"
-        case .sage: "鼠尾草绿"
+        case .cyan: "星际青"
+        case .roseGold: "玫瑰金"
+        case .aurora: "极光紫"
         }
     }
     var color: Color {
         switch self {
-        case .amber: Color(red: 1, green: 0.63, blue: 0.22)
-        case .blush: Color(red: 0.96, green: 0.48, blue: 0.48)
-        case .sage: Color(red: 0.42, green: 0.68, blue: 0.52)
+        case .cyan: Color(red: 0.14, green: 0.86, blue: 0.96)
+        case .roseGold: Color(red: 0.90, green: 0.56, blue: 0.46)
+        case .aurora: Color(red: 0.55, green: 0.48, blue: 0.96)
         }
     }
 }
@@ -105,6 +105,15 @@ enum MoodInterval: Int, CaseIterable, Codable, Identifiable {
         case .oneHour: "1 小时"
         }
     }
+}
+
+enum MetricsRefreshInterval: Int, CaseIterable, Codable, Identifiable {
+    case twoSeconds = 2
+    case fiveSeconds = 5
+    case tenSeconds = 10
+
+    var id: Int { rawValue }
+    var title: String { "\(rawValue) 秒" }
 }
 
 struct PetReminder: Codable, Identifiable, Equatable {

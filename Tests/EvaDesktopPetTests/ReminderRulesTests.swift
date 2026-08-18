@@ -1,5 +1,5 @@
 import XCTest
-@testable import AstraPet
+@testable import EvaDesktopPet
 
 final class ReminderRulesTests: XCTestCase {
     func testAcceptsValidReminder() {
@@ -37,5 +37,9 @@ final class ReminderRulesTests: XCTestCase {
     func testShieldStylesHavePresentationTitles() {
         XCTAssertEqual(ShieldStyle.allCases.count, 3)
         XCTAssertTrue(ShieldStyle.allCases.allSatisfy { !$0.title.isEmpty })
+    }
+
+    func testMetricsRefreshIntervalsStayLowFrequency() {
+        XCTAssertEqual(MetricsRefreshInterval.allCases.map(\.rawValue), [2, 5, 10])
     }
 }

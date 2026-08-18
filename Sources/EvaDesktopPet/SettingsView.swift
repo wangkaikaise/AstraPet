@@ -5,6 +5,7 @@ struct SettingsView: View {
     @EnvironmentObject private var settings: PetSettings
     @EnvironmentObject private var reminders: ReminderManager
     @EnvironmentObject private var runtime: PetRuntime
+    @EnvironmentObject private var systemMetrics: SystemMetricsMonitor
     @State private var title = ""
     @State private var time = Date()
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -84,6 +85,38 @@ struct SettingsView: View {
             .formStyle(.grouped)
             .tabItem { Label("环境", systemImage: "lamp.desk.fill") }
 
+            Form {
+                Section("桌面性能卡片") {
+                    Toggle("在宠物旁显示性能信息", isOn: $settings.showSystemMonitor)
+                    Picker("刷新频率", selection: $settings.metricsRefreshInterval) {
+                        ForEach(MetricsRefreshInterval.allCases) { interval in
+                            Text(interval.title).tag(interval)
+                        }
+                    }
+                    .disabled(!settings.showSystemMonitor)
+                }
+
+                Section("显示项目") {
+                    Toggle("CPU 占用率", isOn: $settings.showCPUUsage)
+                    Toggle("CPU 温度 / 热状态", isOn: $settings.showCPUTemperature)
+                    Toggle("GPU 占用率", isOn: $settings.showGPUUsage)
+                    Toggle("GPU 温度", isOn: $settings.showGPUTemperature)
+                }
+                .disabled(!settings.showSystemMonitor)
+
+                Section("当前读数") {
+                    LabeledContent("CPU 占用率", value: percentage(systemMetrics.snapshot.cpuUsage))
+                    LabeledContent("CPU 热状态", value: systemMetrics.snapshot.thermalState)
+                    LabeledContent("GPU 占用率", value: percentage(systemMetrics.snapshot.gpuUsage))
+                    LabeledContent("精确芯片温度", value: "macOS 系统限制")
+                    Text("CPU 占用率使用 Mach 系统计数器；GPU 占用率读取可用的 IORegistry 性能统计。macOS 不向普通应用提供统一、公开的 CPU/GPU 摄氏温度接口，因此本版以系统热状态安全降级，不会显示猜测数值。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .formStyle(.grouped)
+            .tabItem { Label("性能", systemImage: "gauge.with.dots.needle.67percent") }
+
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     TextField("提醒内容，例如：起来走一走", text: $title)
@@ -94,7 +127,7 @@ struct SettingsView: View {
                 }
 
                 if reminders.authorizationDenied {
-                    Label("通知权限未开启，请在系统设置中允许 AstraPet 通知。", systemImage: "exclamationmark.triangle")
+                    Label("通知权限未开启，请在系统设置中允许 Eva Desktop Pet 通知。", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
                 }
 
@@ -121,7 +154,7 @@ struct SettingsView: View {
                                 .font(.system(size: 28))
                                 .foregroundStyle(.secondary)
                             Text("还没有提醒").font(.headline)
-                            Text("添加一个每日提醒，Astra 会准时通知你。")
+                            Text("添加一个每日提醒，Eva 会准时通知你。")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -132,6 +165,10 @@ struct SettingsView: View {
             .tabItem { Label("提醒", systemImage: "bell") }
         }
         .frame(width: 620, height: 470)
+    }
+
+    private func percentage(_ value: Double?) -> String {
+        value.map { String(format: "%.0f%%", $0) } ?? "等待采样"
     }
 
     private func addReminder() {
